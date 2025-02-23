@@ -37,6 +37,7 @@ export const HomePage = () => {
     const [loading, setLoading] = useState(false);
     const [approxBudget, setApproxBudget] = useState(null);
     const [budget, setBudget] = useState(0);
+    const [specificPlace, setSpecificPlace] = useState("");
 
     const handleInputChanges = (name, value) => {
         setFormData({
@@ -315,6 +316,23 @@ export const HomePage = () => {
                                                 )
                                             )}
                                         </div>
+                                    </div>
+                                    <div>
+                                        <Label
+                                            htmlFor="specificPlace"
+                                            className="text-base md:text-lg"
+                                        >
+                                            Any specific place you want to add to the itinerary? (Optional)
+                                        </Label>
+                                        <Input
+                                            id="specificPlace"
+                                            type="text"
+                                            placeholder="Enter a specific place"
+                                            onChange={(e) =>
+                                                setSpecificPlace(e.target.value)
+                                            }
+                                            className="border-2 dark:border-customGreen border-blue-700 bg-white text-slate-800 "
+                                        />
                                     </div>
                                 </div>
                             </div>

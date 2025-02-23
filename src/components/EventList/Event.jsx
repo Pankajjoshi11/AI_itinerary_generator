@@ -58,7 +58,7 @@ const EventList = ({ location }) => {
           start: "0" 
         },
         headers: {
-          "x-rapidapi-key": "af73b8ac20msh94a9eb297e6e2adp1f5bc4jsn7a6fad7ded4d",
+          "x-rapidapi-key": "3ef090441amshb192b75ccc7677fp174c9fjsn273c8739d468",
           "x-rapidapi-host": "real-time-events-search.p.rapidapi.com",
         },
       });

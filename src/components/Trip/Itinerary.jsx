@@ -26,6 +26,7 @@ export const Itinerary = ({ trip }) => {
 												to={
 													"https://www.google.com/maps/search/?api=1&query=" +
 													activity.PlaceName +
+													" " +
 													trip?.userSelection
 														?.location?.label
 												}
@@ -36,6 +37,7 @@ export const Itinerary = ({ trip }) => {
 														activity.PlaceImageURL || "/default.jpg"
 													}
 													alt={`Image of ${activity.PlaceName}`}
+													className="w-full h-40 object-cover rounded"
 												/>
 												<h3 className="font-semibold mt-1">
 													📍 {activity.PlaceName}
@@ -46,20 +48,26 @@ export const Itinerary = ({ trip }) => {
 												<p className="my-1">
 													<span className="font-bold">
 														Best Time to Visit:{" "}
-													</span>{" "}
+													</span>
 													{activity.BestTimeToVisit}
 												</p>
 												<p className="my-1">
 													<span className="font-bold">
-														Ticket Pricing:
-													</span>{" "}
+														Ticket Pricing:{" "}
+													</span>
 													{activity.TicketPricing}
 												</p>
 												<p className="my-1">
 													<span className="font-bold">
 														Travel Time:{" "}
-													</span>{" "}
+													</span>
 													{activity.TravelTime}
+												</p>
+												<p className="my-1">
+													<span className="font-bold">
+														How to Travel:{" "}
+													</span>
+													{activity.HowToTravel}
 												</p>
 											</Link>
 										</div>

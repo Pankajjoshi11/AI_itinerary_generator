@@ -4,7 +4,7 @@ import { collection, query, where, getDocs, doc, getDoc } from "firebase/firesto
 import { db } from "@/services/fireBaseConfig";
 import MyTripsCard from "./MyTripsCard";
 import { Card } from "../ui/card";
-import { Chatbot } from "../chatbot/Chatbot";
+import  Chatbot  from "../chatbot/Chatbot";
 
 export const MyTrips = () => {
 	const navigate = useNavigate();

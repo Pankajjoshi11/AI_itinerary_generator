@@ -15,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-	AI_PROMPT,
+	AI_PROMPT_HOTELS,
 	SelectBudgetOptions,
 	SelectTravelerList,
 } from "@/constants/options";
@@ -53,7 +53,7 @@ export const HomePage = () => {
 			!formData?.budget ||
 			!formData?.people
 		) {
-			toast("please fill all details!");
+			toast("Please fill all details!");
 			return;
 		}
 
@@ -62,13 +62,12 @@ export const HomePage = () => {
 			"Patience is a virtue, and awesome things take time. We'll get you there soon!"
 		);
 
-		const FINAL_PROMPT = AI_PROMPT.replace("{noOfDays}", formData?.noOfDays)
+		const FINAL_PROMPT = AI_PROMPT_HOTELS
 			.replace("{people}", formData?.people)
 			.replace("{location}", formData?.location?.label)
 			.replace("{budget}", formData?.budget);
 
 		const result = await chatSession.sendMessage(FINAL_PROMPT);
-
 		const responseText = result?.response?.text();
 		console.log("--", responseText);
 
@@ -85,7 +84,7 @@ export const HomePage = () => {
 		const docId = Date.now().toString();
 		await setDoc(doc(db, "AItrip", docId), {
 			userSelection: formData,
-			tripData: TripData,
+			tripData: { hotels: TripData.hotels || [] }, // Only hotels initially
 			userEmail: user?.email,
 			id: docId,
 		});

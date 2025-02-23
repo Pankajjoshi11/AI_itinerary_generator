@@ -28,7 +28,19 @@ export const SelectTravelerList = [
 		people: "5-10 People",
 	},
 ];
-
+export const CityBudgets = {
+    "New Delhi": {
+        low: 15000,
+        moderate: 30000,
+        luxury: 45000,
+    },
+    "Dubai": {
+        low: 45000,
+        moderate: 90000,
+        luxury: 135000,
+    },
+    // Add more cities and their budgets here
+};
 export const SelectBudgetOptions = [
 	{
 		id: 1,

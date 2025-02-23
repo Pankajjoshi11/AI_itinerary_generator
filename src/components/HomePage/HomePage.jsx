@@ -44,9 +44,11 @@ export const HomePage = () => {
             ...formData,
             [name]: value,
         });
-
         if (name === "location" || name === "startCity") {
             updateApproxBudget(value);
+        }
+        if (name === "specificPlace") {
+            setSpecificPlace(value); // Sync state
         }
     };
 
@@ -108,8 +110,11 @@ export const HomePage = () => {
         const user = JSON.parse(localStorage.getItem("user"));
         const docId = Date.now().toString();
         await setDoc(doc(db, "AItrip", docId), {
-            userSelection: formData,
-            tripData: { hotels: TripData.hotels || [] }, // Only hotels initially
+            userSelection: {
+                ...formData,
+                specificPlace: specificPlace || "", // Include specificPlace
+            },
+            tripData: { hotels: TripData.hotels || [] },
             userEmail: user?.email,
             id: docId,
         });
@@ -318,22 +323,17 @@ export const HomePage = () => {
                                         </div>
                                     </div>
                                     <div>
-                                        <Label
-                                            htmlFor="specificPlace"
-                                            className="text-base md:text-lg"
-                                        >
-                                            Any specific place you want to add to the itinerary? (Optional)
-                                        </Label>
-                                        <Input
-                                            id="specificPlace"
-                                            type="text"
-                                            placeholder="Enter a specific place"
-                                            onChange={(e) =>
-                                                setSpecificPlace(e.target.value)
-                                            }
-                                            className="border-2 dark:border-customGreen border-blue-700 bg-white text-slate-800 "
-                                        />
-                                    </div>
+										<Label htmlFor="specificPlace" className="text-base md:text-lg">
+											Any specific place you want to add to the itinerary? (Optional)
+										</Label>
+										<Input
+											id="specificPlace"
+											type="text"
+											placeholder="Enter a specific place"
+											onChange={(e) => handleInputChanges("specificPlace", e.target.value)}
+											className="border-2 dark:border-customGreen border-blue-700 bg-white text-slate-800"
+										/>
+									</div>
                                 </div>
                             </div>
                         </form>

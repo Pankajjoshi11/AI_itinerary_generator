@@ -2,12 +2,10 @@ export default function Footer() {
 	const currentYear = new Date().getFullYear();
 
 	return (
-		<>
-			<div className="container py-6 xs:mt-5 sm:mt-5 md:mt-12 lg:mt-18">
-				<p className="text-center text-xs md:text-sm lg:text-base">
-					&copy; {currentYear} TravelMate
-				</p>
-			</div>
-		</>
+		<footer className="w-full bg-[#F3FFC6] dark:bg-transparent py-4 xs:mt-5 text-center">
+			<p className="text-xs md:text-sm lg:text-base text-[#1C5253] dark:text-inherit">
+				&copy; {currentYear} TravelMate
+			</p>
+		</footer>
 	);
 }

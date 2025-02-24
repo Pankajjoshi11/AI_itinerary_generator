@@ -63,7 +63,7 @@ export const InfoSection = ({ trip }) => {
 											src={
 												photoUrl
 													? photoUrl
-													: "/trip.jpg"
+													: ""
 											}
 											className="h-48 md:h-[499px] object-fill w-full rounded-2xl"
 										/>

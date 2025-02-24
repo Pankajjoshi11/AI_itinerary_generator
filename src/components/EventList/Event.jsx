@@ -8,12 +8,15 @@ import {
   FaPhone, 
   FaStar 
 } from "react-icons/fa";
+import { addEventToItinerary } from '../../services/AImodel';
 
 const EventList = ({ location }) => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedDate, setSelectedDate] = useState("");
+  const [alertMessage, setAlertMessage] = useState("");
+  const [showAlert, setShowAlert] = useState(false);
 
   const formatDate = (dateString) => {
     if (!dateString || typeof dateString !== "string") return "Not Available";
@@ -41,6 +44,37 @@ const EventList = ({ location }) => {
     }
   };
 
+  const handleAddToItinerary = async (event) => {
+    try {
+      const userResponse = window.confirm(`Would you like to add "${event.name}" to your itinerary?`);
+      
+      if (userResponse) {
+        const eventDetails = {
+          PlaceName: event.name,
+          PlaceDetails: event.venue.full_address,
+          GeoCoordinates: {
+            latitude: event.venue.latitude,
+            longitude: event.venue.longitude
+          },
+          TicketPricing: event.ticket_links?.[0]?.price || "Price not available",
+          TravelTime: "Varies based on location",
+          BestTimeToVisit: getEventTime(event.date_human_readable),
+          PlaceImageURL: event.venue.image_url || "/api/placeholder/400/320"
+        };
+        
+        await addEventToItinerary(eventDetails);
+        setAlertMessage(`Successfully added ${event.name} to your itinerary!`);
+        setShowAlert(true);
+        setTimeout(() => setShowAlert(false), 3000);
+      }
+    } catch (error) {
+      console.error("Error adding to itinerary:", error);
+      setAlertMessage("Failed to add event to itinerary");
+      setShowAlert(true);
+      setTimeout(() => setShowAlert(false), 3000);
+    }
+  };
+
   const fetchEvents = async (locationQuery, dateFilter) => {
     if (!locationQuery) return;
 
@@ -58,33 +92,26 @@ const EventList = ({ location }) => {
           start: "0" 
         },
         headers: {
-          "x-rapidapi-key": "af73b8ac20msh94a9eb297e6e2adp1f5bc4jsn7a6fad7ded4d",
+          "x-rapidapi-key": "3ef090441amshb192b75ccc7677fp174c9fjsn273c8739d468",
           "x-rapidapi-host": "real-time-events-search.p.rapidapi.com",
         },
       });
 
       if (response.data.data && response.data.data.length > 0) {
-        let filteredEvents = response.data.data;
-
-        if (dateFilter) {
-          const selectedDateObj = new Date(dateFilter);
-          filteredEvents = filteredEvents.filter((event) => {
-            const eventDateStr = event.date_human_readable;
-            if (!eventDateStr || typeof eventDateStr !== "string") return false;
-            const eventDate = eventDateStr.split(",")[1]?.trim().split("–")[0].trim() || "";
-            if (!eventDate) return false;
-            const eventDateObj = new Date(eventDate + " " + new Date().getFullYear());
-            return eventDateObj.toDateString() === selectedDateObj.toDateString();
-          });
-        }
-
-        setEvents(filteredEvents);
+        setEvents(response.data.data);
+        setAlertMessage(`Found ${response.data.data.length} events in ${location}!`);
+        setShowAlert(true);
+        setTimeout(() => setShowAlert(false), 3000);
       } else {
         setEvents([]);
+        setAlertMessage(`No events found in ${location}`);
+        setShowAlert(true);
       }
     } catch (err) {
       console.error("API Error:", err);
       setError("Failed to fetch events.");
+      setAlertMessage("Error fetching events. Please try again later.");
+      setShowAlert(true);
     } finally {
       setLoading(false);
     }
@@ -99,16 +126,13 @@ const EventList = ({ location }) => {
   return (
     <div style={styles.container}>
       <div style={styles.innerContainer}>
-        <h1 style={styles.heading}>Local Events in {location}</h1>
+        {showAlert && (
+          <div style={styles.alert}>
+            <p style={styles.alertText}>{alertMessage}</p>
+          </div>
+        )}
 
-        {/* <div style={styles.inputContainer}>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            style={styles.input}
-          />
-        </div> */}
+        <h1 style={styles.heading}>Local Events in {location}</h1>
 
         {loading && <p style={styles.centerText}>Loading events...</p>}
         {error && <p style={styles.error}>{error}</p>}
@@ -133,7 +157,7 @@ const EventList = ({ location }) => {
                     <span>{getEventTime(event.date_human_readable)}</span>
                   </div>
                   <div style={styles.infoRow}>
-                    <FaMapMarkerAlt style={styles.icon1} />
+                    <FaMapMarkerAlt style={styles.icon} />
                     <span>{event.venue.full_address || "Not Available"}</span>
                   </div>
                   <div style={styles.infoRow}>
@@ -144,16 +168,24 @@ const EventList = ({ location }) => {
                     <FaPhone style={styles.icon} />
                     <span>{event.venue.phone_number || "N/A"}</span>
                   </div>
-                  {event.ticket_links?.[0]?.link && (
-                    <a
-                      href={event.ticket_links[0].link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={styles.ticketButton}
+                  <div style={styles.buttonContainer}>
+                    {event.ticket_links?.[0]?.link && (
+                      <a
+                        href={event.ticket_links[0].link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={styles.ticketButton}
+                      >
+                        Get Tickets ({event.ticket_links[0].source})
+                      </a>
+                    )}
+                    <button
+                      onClick={() => handleAddToItinerary(event)}
+                      style={styles.addButton}
                     >
-                      Get Tickets ({event.ticket_links[0].source})
-                    </a>
-                  )}
+                      Add to Itinerary
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -175,31 +207,23 @@ const styles = {
     maxWidth: "1280px",
     margin: "0 auto",
   },
-  icon1: {
-    fontSize: "50px",
+  alert: {
+    backgroundColor: "rgba(7,193,118,0.2)",
+    border: "1px solid rgb(7,193,118)",
+    borderRadius: "4px",
+    padding: "12px",
+    marginBottom: "16px",
+  },
+  alertText: {
+    margin: 0,
+    color: "rgb(249,251,251)",
+    textAlign: "center",
   },
   heading: {
     fontSize: "1.875rem",
     fontWeight: "bold",
     textAlign: "center",
     marginBottom: "32px",
-  },
-  inputContainer: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "16px",
-    justifyContent: "center",
-    marginBottom: "32px",
-  },
-  input: {
-    maxWidth: "320px",
-    padding: "8px 12px",
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    border: "1px solid rgba(255, 255, 255, 0.2)",
-    color: "rgb(249,251,251)",
-    borderRadius: "4px",
-    fontSize: "16px",
-    width: "100%",
   },
   cardGrid: {
     display: "grid",
@@ -236,6 +260,12 @@ const styles = {
     height: "16px",
     color: "white",
   },
+  buttonContainer: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
+    marginTop: "16px",
+  },
   ticketButton: {
     backgroundColor: "rgb(7,193,118)",
     padding: "10px",
@@ -243,8 +273,17 @@ const styles = {
     color: "white",
     textAlign: "center",
     display: "block",
-    marginTop: "16px",
     textDecoration: "none",
+    fontWeight: "bold",
+  },
+  addButton: {
+    backgroundColor: "#4a5568",
+    padding: "10px",
+    borderRadius: "4px",
+    color: "white",
+    textAlign: "center",
+    border: "none",
+    cursor: "pointer",
     fontWeight: "bold",
   },
   centerText: {

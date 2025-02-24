@@ -1,17 +1,19 @@
 import { db } from "@/services/fireBaseConfig";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react"; // Added useMemo
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { InfoSection } from "../components/Trip/InfoSection";
 import { Hotels } from "../components/Trip/Hotels";
 import { Flights } from "../components/Flights/Flights";
 import { Itinerary } from "../components/Trip/Itinerary";
+import { Packing } from "../components/Packing/Packing";
+import PdfMaker from "../components/Trip/Pdfmaker";
 import { Card } from "@/components/ui/card";
 import Chatbot from "../components/chatbot/Chatbot";
 import EventList from "../components/EventList/Event";
 import Map from "@/components/Map/Map";
-import { AI_PROMPT_ITINERARY, AI_PROMPT_FLIGHTS } from "../constants/options";
+import { AI_PROMPT_ITINERARY, AI_PROMPT_FLIGHTS, AI_PROMPT_PACKING } from "../constants/options";
 import { chatSession } from "@/services/AImodel";
 
 export const ViewTrip = () => {
@@ -21,6 +23,8 @@ export const ViewTrip = () => {
     const [itineraryGenerated, setItineraryGenerated] = useState(false);
     const [showEvents, setShowEvents] = useState(false);
     const [showFlights, setShowFlights] = useState(false);
+    const [showPacking, setShowPacking] = useState(false);
+    const [loadingItinerary, setLoadingItinerary] = useState(false); // New loading state
 
     useEffect(() => {
         if (tripId) {
@@ -33,7 +37,9 @@ export const ViewTrip = () => {
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
-            setTrip({ id: docSnap.id, ...docSnap.data() });
+            const tripData = docSnap.data();
+            console.log("Fetched Trip Data from Firestore:", tripData);
+            setTrip({ id: docSnap.id, ...tripData });
         } else {
             toast("No trip found");
             setTrip(null);
@@ -41,8 +47,8 @@ export const ViewTrip = () => {
     };
 
     const generateItinerary = async () => {
+        setLoadingItinerary(true); // Start loading
         const { userSelection, tripData } = trip;
-
         let formattedDate;
         if (userSelection?.startDate) {
             let dateObj;
@@ -71,34 +77,53 @@ export const ViewTrip = () => {
 
         const result = await chatSession.sendMessage(prompt);
         const responseText = result?.response?.text();
-        const responseJSON = JSON.parse(responseText);
+        console.log("Raw AI Response:", responseText);
+
+        let responseJSON;
+        try {
+            responseJSON = JSON.parse(responseText);
+            console.log("Parsed AI Response:", responseJSON);
+        } catch (e) {
+            console.error("Parsing error:", e);
+            responseJSON = { itinerary: [], ApproximateTotalBudget: 0 };
+        }
+
+        const itineraryData = responseJSON.itinerary || [];
+        const budget = responseJSON.ApproximateTotalBudget || 0;
+
+        console.log("Itinerary Data:", itineraryData);
+        console.log("Budget:", budget);
 
         await setDoc(
             doc(db, "AItrip", tripId),
             {
                 tripData: {
                     ...tripData,
-                    itinerary: responseJSON.itinerary || [],
-                    approximateTotalBudget: responseJSON.ApproximateTotalBudget || 0,
+                    itinerary: itineraryData,
+                    approximateTotalBudget: budget,
                 },
             },
             { merge: true }
         );
 
-        setTrip((prev) => ({
-            ...prev,
-            tripData: {
-                ...prev.tripData,
-                itinerary: responseJSON.itinerary || [],
-                approximateTotalBudget: responseJSON.ApproximateTotalBudget || 0,
-            },
-        }));
+        setTrip((prev) => {
+            const newTrip = {
+                ...prev,
+                tripData: {
+                    ...prev.tripData,
+                    itinerary: itineraryData,
+                    approximateTotalBudget: budget,
+                },
+            };
+            console.log("Updated Trip State:", newTrip);
+            return newTrip;
+        });
         setItineraryGenerated(true);
+        setLoadingItinerary(false); // End loading
     };
 
     const generateFlights = async () => {
         const { userSelection, tripData } = trip;
-
         let formattedDate;
         if (userSelection?.startDate) {
             let dateObj;
@@ -174,6 +199,71 @@ export const ViewTrip = () => {
         setShowFlights(true);
     };
 
+    const generatePackingList = async () => {
+        const { userSelection, tripData } = trip;
+
+        let formattedDate;
+        if (userSelection?.startDate) {
+            let dateObj;
+            if (userSelection.startDate.seconds) {
+                dateObj = new Date(userSelection.startDate.seconds * 1000);
+            } else if (typeof userSelection.startDate === "string") {
+                dateObj = new Date(userSelection.startDate);
+            } else if (userSelection.startDate instanceof Date) {
+                dateObj = userSelection.startDate;
+            }
+            formattedDate = dateObj && !isNaN(dateObj.getTime())
+                ? dateObj.toISOString().split("T")[0]
+                : "unspecified date";
+        } else {
+            formattedDate = "unspecified date";
+        }
+
+        const month = new Date(formattedDate).getMonth() + 1;
+        const season = 
+            month >= 3 && month <= 5 ? "spring" :
+            month >= 6 && month <= 8 ? "summer" :
+            month >= 9 && month <= 11 ? "autumn" :
+            "winter";
+
+        const itineraryActivities = tripData.itinerary
+            ? tripData.itinerary.map((day, index) => 
+                `Day ${index + 1}: Visit ${day.PlaceName} (${day.PlaceDetails})`
+              ).join(", ")
+            : "No itinerary provided";
+
+        const prompt = AI_PROMPT_PACKING
+            .replace("{location}", userSelection?.location?.label || "unknown location")
+            .replace("{noOfDays}", userSelection?.noOfDays || "3")
+            .replace("{startDate}", formattedDate)
+            .replace("{season}", season)
+            .replace("{itineraryActivities}", itineraryActivities);
+
+        const result = await chatSession.sendMessage(prompt);
+        const responseText = result?.response?.text();
+        const responseJSON = JSON.parse(responseText);
+
+        await setDoc(
+            doc(db, "AItrip", tripId),
+            {
+                tripData: {
+                    ...tripData,
+                    packingList: responseJSON || {},
+                },
+            },
+            { merge: true }
+        );
+
+        setTrip((prev) => ({
+            ...prev,
+            tripData: {
+                ...prev.tripData,
+                packingList: responseJSON || {},
+            },
+        }));
+        setShowPacking(true);
+    };
+
     const handleHotelSelect = (hotel) => {
         setSelectedHotel(hotel);
     };
@@ -186,16 +276,22 @@ export const ViewTrip = () => {
         generateFlights();
     };
 
+    const handleShowPacking = () => {
+        generatePackingList();
+    };
+
+    const stableTrip = useMemo(() => trip, [trip]);
+
     return (
         <div className="container my-4">
             <Card className="border-x-2 p-5">
-                <InfoSection trip={trip} />
+                <InfoSection trip={stableTrip} />
 
-                {trip && !selectedHotel ? (
+                {stableTrip && !selectedHotel ? (
                     <div className="mt-6">
                         <h2 className="text-xl font-bold mb-4">Select a Hotel</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {trip.tripData?.hotels.map((hotel, index) => (
+                            {stableTrip.tripData?.hotels.map((hotel, index) => (
                                 <div
                                     key={index}
                                     className="border p-4 rounded-lg cursor-pointer hover:bg-gray-100"
@@ -217,21 +313,22 @@ export const ViewTrip = () => {
                     </div>
                 ) : selectedHotel && !itineraryGenerated ? (
                     <>
-                        <Hotels trip={{ ...trip, tripData: { hotels: [selectedHotel] } }} />
+                        <Hotels trip={{ ...stableTrip, tripData: { hotels: [selectedHotel] } }} />
                         <button
                             onClick={generateItinerary}
                             className="bg-blue-700 text-white px-4 py-2 rounded mt-4 hover:bg-blue-800 transition-all"
                         >
                             Generate Itinerary
                         </button>
+                        {loadingItinerary && <p className="text-center">Loading itinerary...</p>}
                     </>
                 ) : itineraryGenerated ? (
                     <>
-                        <Hotels trip={{ ...trip, tripData: { hotels: [selectedHotel] } }} />
-                        <Itinerary trip={trip} />
+                        <Hotels trip={{ ...stableTrip, tripData: { hotels: [selectedHotel] } }} />
+                        <Itinerary trip={stableTrip} />
                         <div className="mt-4">
                             <p className="text-lg font-semibold text-blue-800 dark:text-customGreen">
-                                Approximate Total Budget (excluding flights): ₹{trip?.tripData?.approximateTotalBudget || 0} INR
+                                Approximate Total Budget (excluding flights): ₹{stableTrip?.tripData?.approximateTotalBudget || 0} INR
                             </p>
                         </div>
                     </>
@@ -255,13 +352,24 @@ export const ViewTrip = () => {
                     >
                         Show Flights
                     </button>
+                    <button
+                        onClick={handleShowPacking}
+                        className="bg-purple-700 text-white px-4 py-2 rounded mt-4 hover:bg-purple-800 transition-all"
+                    >
+                        Packing Details
+                    </button>
+                    {itineraryGenerated && (
+                        <div>
+                            <PdfMaker trip={trip} selectedHotel={selectedHotel} />
+                        </div>
+                    )}
                 </div>
             </Card>
 
-            {trip ? (
+            {stableTrip ? (
                 <Chatbot
-                    tripId={trip.id}
-                    destination={trip.userSelection?.location?.label}
+                    tripId={stableTrip.id}
+                    destination={stableTrip.userSelection?.location?.label}
                 />
             ) : (
                 <div className="fixed bottom-5 right-5 bg-white p-4 shadow-lg rounded-xl">
@@ -269,15 +377,25 @@ export const ViewTrip = () => {
                 </div>
             )}
 
-            {showEvents && trip && (
+            {showEvents && stableTrip && (
                 <div className="mt-6">
-                    <EventList location={trip.userSelection?.location?.label} />
+                    <EventList
+                        location={stableTrip.userSelection?.location?.label}
+                        startDate={stableTrip.userSelection?.startDate}
+                        noOfDays={stableTrip.userSelection?.noOfDays}
+                    />
                 </div>
             )}
 
-            {showFlights && trip && (
+            {showFlights && stableTrip && (
                 <div className="mt-6">
-                    <Flights trip={trip} />
+                    <Flights trip={stableTrip} />
+                </div>
+            )}
+
+            {showPacking && stableTrip && (
+                <div className="mt-6">
+                    <Packing trip={stableTrip} />
                 </div>
             )}
         </div>

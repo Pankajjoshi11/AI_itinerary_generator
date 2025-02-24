@@ -1,6 +1,6 @@
 import { db } from "@/services/fireBaseConfig";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { useEffect, useState, useMemo } from "react"; // Added useMemo
+import { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { InfoSection } from "../components/Trip/InfoSection";
@@ -16,18 +16,16 @@ import Map from "@/components/Map/Map";
 import { AI_PROMPT_ITINERARY, AI_PROMPT_FLIGHTS, AI_PROMPT_PACKING } from "../constants/options";
 import { chatSession } from "@/services/AImodel";
 import emailjs from "emailjs-com";
-import { Shopping } from "../components/Shopping/Shopping"; // Import Shopping component
 
 export const ViewTrip = () => {
     const { tripId } = useParams();
     const [trip, setTrip] = useState(null);
-    const [selectedHotel, setSelectedHotel] = useState(null); // State for selected hotel, initialized to null
+    const [selectedHotel, setSelectedHotel] = useState(null);
     const [itineraryGenerated, setItineraryGenerated] = useState(false);
     const [showEvents, setShowEvents] = useState(false);
     const [showFlights, setShowFlights] = useState(false);
     const [showPacking, setShowPacking] = useState(false);
-    const [showShopping, setShowShopping] = useState(false); // New state for shopping
-    const [loadingItinerary, setLoadingItinerary] = useState(false); // New loading state
+    const [loadingItinerary, setLoadingItinerary] = useState(false); // Loading state for itinerary
 
     useEffect(() => {
         if (tripId) {
@@ -43,7 +41,7 @@ export const ViewTrip = () => {
             const tripData = docSnap.data();
             console.log("Fetched Trip Data from Firestore:", tripData);
             setTrip({ id: docSnap.id, ...tripData });
-            // Set selectedHotel if it exists in the document or from tripData
+            // Set selectedHotel if it exists in the document
             if (tripData.selectedHotel) {
                 setSelectedHotel(tripData.selectedHotel);
             }
@@ -54,7 +52,7 @@ export const ViewTrip = () => {
     };
 
     const handleHotelSelect = (hotel) => {
-        setSelectedHotel(hotel); // Store the selected hotel in state
+        setSelectedHotel(hotel);
         // Save the selected hotel to Firestore immediately
         saveSelectedHotel(hotel);
     };
@@ -76,13 +74,8 @@ export const ViewTrip = () => {
     };
 
     const generateItinerary = async () => {
-        if (!selectedHotel) {
-            toast.error("Please select a hotel before generating the itinerary.");
-            return;
-        }
-
         setLoadingItinerary(true); // Start loading
-        const { userSelection, tripData } = trip;
+        const { userSelection, tripData } = trip || {};
         let formattedDate;
         if (userSelection?.startDate) {
             let dateObj;
@@ -100,40 +93,79 @@ export const ViewTrip = () => {
             formattedDate = "unspecified date";
         }
 
-        // Use selectedHotel for HotelName and GeoCoordinates in the prompt
-        const hotelName = selectedHotel?.HotelName || "Unknown Hotel";
+        // Ensure selectedHotel has GeoCoordinates, fall back to an empty string if not
         const startingGeoCoordinates = selectedHotel?.GeoCoordinates
             ? `${selectedHotel.GeoCoordinates.latitude},${selectedHotel.GeoCoordinates.longitude}`
             : "";
 
         const prompt = AI_PROMPT_ITINERARY
-            .replace("{noOfDays}", userSelection?.noOfDays || "3")
-            .replace("{people}", userSelection?.people || "1 People")
-            .replace("{location}", userSelection?.location?.label || "unknown location")
-            .replace("{budget}", userSelection?.budget || "Moderate")
-            .replace("{HotelName}", hotelName) // Use selected hotel name
+            .replace("{noOfDays}", userSelection?.noOfDays || "4") // Match your trip object (4 days)
+            .replace("{people}", userSelection?.people || "5-10 People") // Match your trip object
+            .replace("{location}", userSelection?.location?.label || "New Delhi, India") // Match your trip object location (Delhi)
+            .replace("{budget}", userSelection?.budget || "Moderate") // Match your trip object
+            .replace("{HotelName}", selectedHotel?.HotelName || "Unknown Hotel") // Use selected hotel name
             .replace("{startingGeoCoordinates}", startingGeoCoordinates) // Use selected hotel's coordinates
             .replace("{startDate}", formattedDate)
-            .replace("{specificPlace}", userSelection?.specificPlace || "none specified");
+            .replace("{specificPlace}", userSelection?.specificPlace || "");
 
-        const result = await chatSession.sendMessage(prompt);
-        const responseText = result?.response?.text();
-        console.log("Raw AI Response:", responseText);
+        console.log("Generated Prompt:", prompt); // Log the prompt for debugging
+
+        let responseText = "";
+        try {
+            const result = await chatSession.sendMessage(prompt);
+            responseText = result?.response?.text() || ""; // Safely get response text, default to empty string if undefined
+            console.log("Raw AI Response:", responseText);
+        } catch (error) {
+            console.error("Error fetching AI response:", error);
+            responseText = ""; // Set to empty string on error
+        }
 
         let responseJSON;
         try {
-            responseJSON = JSON.parse(responseText);
+            responseJSON = responseText ? JSON.parse(responseText) : { itinerary: [], ApproximateTotalBudget: 0 };
             console.log("Parsed AI Response:", responseJSON);
         } catch (e) {
             console.error("Parsing error:", e);
             responseJSON = { itinerary: [], ApproximateTotalBudget: 0 };
         }
 
-        // Updated parsing logic with OR condition for trip.itinerary or root-level itinerary
-        const itineraryData = (responseJSON.trip?.itinerary || responseJSON.itinerary) || [];
-        const budget = (responseJSON.trip?.ApproximateTotalBudget || responseJSON.ApproximateTotalBudget) || 0;
+        // Extract and normalize the itinerary data from the response to match your trip object and components
+        let itineraryData = [];
+        if (Array.isArray(responseJSON.trip?.itinerary) || Array.isArray(responseJSON.itinerary)) {
+            itineraryData = (responseJSON.trip?.itinerary || responseJSON.itinerary).map((day, index) => ({
+                Day: day.Day || `2025-02-${27 + index}`, // Use Day from response or default to your trip object's dates
+                Activities: (day.Activities || []).map(activity => ({
+                    PlaceName: activity.PlaceName || "",
+                    PlaceDetails: activity.PlaceDetails || "",
+                    PlaceImageURL: activity.PlaceImageURL || "",
+                    GeoCoordinates: activity.GeoCoordinates || { latitude: 0, longitude: 0 },
+                    TicketPricing: activity.TicketPricing || "",
+                    TravelTime: activity.TravelTime || "",
+                    BestTimeToVisit: activity.BestTimeToVisit || "",
+                    HowToTravel: activity.HowToTravel || ""
+                }))
+            }));
+        } else if ((typeof responseJSON.trip?.itinerary === "object" && responseJSON.trip?.itinerary !== null) || 
+                   (typeof responseJSON.itinerary === "object" && responseJSON.itinerary !== null)) {
+            itineraryData = Object.values(responseJSON.trip?.itinerary || responseJSON.itinerary).map((day, index) => ({
+                Day: day.Day || `2025-02-${27 + index}`,
+                Activities: (day.Activities || []).map(activity => ({
+                    PlaceName: activity.PlaceName || "",
+                    PlaceDetails: activity.PlaceDetails || "",
+                    PlaceImageURL: activity.PlaceImageURL || "",
+                    GeoCoordinates: activity.GeoCoordinates || { latitude: 0, longitude: 0 },
+                    TicketPricing: activity.TicketPricing || "",
+                    TravelTime: activity.TravelTime || "",
+                    BestTimeToVisit: activity.BestTimeToVisit || "",
+                    HowToTravel: activity.HowToTravel || ""
+                }))
+            }));
+        }
 
-        console.log("Itinerary Data:", itineraryData);
+        // Extract budget (handle the case where ApproximateTotalBudget is in trip or at the root level)
+        const budget = responseJSON.trip?.ApproximateTotalBudget || responseJSON.ApproximateTotalBudget || 0;
+
+        console.log("Processed Itinerary Data:", itineraryData);
         console.log("Budget:", budget);
 
         await setDoc(
@@ -141,6 +173,7 @@ export const ViewTrip = () => {
             {
                 tripData: {
                     ...tripData,
+                    hotels: tripData.hotels || [], // Ensure hotels are preserved
                     itinerary: itineraryData,
                     approximateTotalBudget: budget,
                 },
@@ -154,6 +187,7 @@ export const ViewTrip = () => {
                 ...prev,
                 tripData: {
                     ...prev.tripData,
+                    hotels: tripData.hotels || [],
                     itinerary: itineraryData,
                     approximateTotalBudget: budget,
                 },
@@ -165,17 +199,16 @@ export const ViewTrip = () => {
         setItineraryGenerated(true);
         setLoadingItinerary(false); // End loading
 
-        // Prepare itinerary text for email, including startDate from the response
-        const startDate = responseJSON.trip?.startDate || formattedDate; // Use trip.startDate if available, fallback to formattedDate
+        // Prepare itinerary text for email
         const itineraryText = `
 Trip Itinerary for ${userSelection?.location?.label || "Unknown Location"}
-Start Date: ${startDate}
+Start Date: ${formattedDate}
 Selected Hotel: ${selectedHotel?.HotelName || "Not specified"}
 Approximate Budget (excluding flights): ₹${budget} INR
 
 ${itineraryData.map((day, index) => `
-Day ${index + 1} (${day.Day}, ${startDate.split("-")[1]}/${startDate.split("-")[2]}/${startDate.split("-")[0]}):
-${day.activities.map(activity => `
+Day ${index + 1} (${day.Day}):
+${day.Activities.map(activity => `
 - ${activity.PlaceName}: ${activity.PlaceDetails}
   Ticket: ${activity.TicketPricing}
   Travel Time: ${activity.TravelTime}
@@ -188,44 +221,8 @@ ${day.activities.map(activity => `
         sendEmail(itineraryText); // Send itinerary as text in email
     };
 
-    const sendEmail = (itineraryText) => {
-        const user = JSON.parse(localStorage.getItem("user"));
-        if (!user?.email) {
-            console.error("No user email found in localStorage");
-            return;
-        }
-
-        // Ensure all fields in the email data are strings or valid values
-        const emailData = {
-            email: user.email || "",
-            tripId: tripId || "",
-            destination: trip?.userSelection?.location?.label || "Unknown Destination",
-            startDate: trip?.userSelection?.startDate 
-                ? new Date(trip.userSelection.startDate.seconds * 1000).toLocaleDateString() || "Unspecified Date"
-                : "Unspecified Date",
-            itinerary: itineraryText || "No itinerary available"
-        };
-
-        emailjs.send(
-            "service_nue47xc", // Service ID
-            "template_rbvlgqc", // Template ID
-            emailData, // Use the structured email data
-            "v0_0UndGhSgkGDJGb" // User ID
-        )
-        .then(
-            (result) => {
-                console.log("Email sent successfully!", result.text);
-                toast.success("Itinerary email sent successfully!");
-            },
-            (error) => {
-                console.error("Failed to send email. Error details:", error);
-                toast.error(`Failed to send itinerary email. Error: ${error.text || error.message}`);
-            }
-        );
-    };
-
     const generateFlights = async () => {
-        const { userSelection, tripData } = trip;
+        const { userSelection, tripData } = trip || {};
         let formattedDate;
         if (userSelection?.startDate) {
             let dateObj;
@@ -251,18 +248,18 @@ ${day.activities.map(activity => `
             .replace("{budget}", userSelection?.budget || "unspecified budget");
 
         const result = await chatSession.sendMessage(prompt);
-        const responseText = result?.response?.text();
+        const responseText = result?.response?.text() || ""; // Safely get response text, default to empty string
         console.log("Raw responseText:", responseText);
 
         let responseJSON;
         try {
-            responseJSON = JSON.parse(responseText);
+            responseJSON = responseText ? JSON.parse(responseText) : [];
+            console.log("Parsed Flights Response:", responseJSON);
         } catch (e) {
             console.error("Failed to parse responseText:", e);
             responseJSON = [];
         }
 
-        // Fixed syntax error in the working version (using backticks for template literals)
         const flightsArray = Array.isArray(responseJSON)
             ? responseJSON.map(flight => ({
                 ...flight,
@@ -303,7 +300,7 @@ ${day.activities.map(activity => `
     };
 
     const generatePackingList = async () => {
-        const { userSelection, tripData } = trip;
+        const { userSelection, tripData } = trip || {};
 
         let formattedDate;
         if (userSelection?.startDate) {
@@ -329,56 +326,30 @@ ${day.activities.map(activity => `
             month >= 9 && month <= 11 ? "autumn" :
             "winter";
 
-        // Revert to simpler parsing logic from the earlier working version
-        const itineraryActivities = tripData?.itinerary
+        const itineraryActivities = tripData?.itinerary && Array.isArray(tripData.itinerary)
             ? tripData.itinerary.map((day, index) => 
-                `Day ${index + 1}: Visit ${day.PlaceName} (${day.PlaceDetails})`
+                `Day ${index + 1}: Visit ${day.Activities.map(act => act.PlaceName).join(", ")} (${day.Activities.map(act => act.PlaceDetails).join("; ")})`
               ).join(", ")
             : "No itinerary provided";
 
-        console.log("Itinerary Activities for Packing:", itineraryActivities);
-
         const prompt = AI_PROMPT_PACKING
             .replace("{location}", userSelection?.location?.label || "unknown location")
-            .replace("{noOfDays}", userSelection?.noOfDays || "3")
+            .replace("{noOfDays}", userSelection?.noOfDays || "4") // Match your trip object (4 days)
             .replace("{startDate}", formattedDate)
             .replace("{season}", season)
             .replace("{itineraryActivities}", itineraryActivities);
 
         const result = await chatSession.sendMessage(prompt);
-        const responseText = result?.response?.text();
+        const responseText = result?.response?.text() || ""; // Safely get response text, default to empty string
         console.log("Raw Packing Response:", responseText);
 
         let responseJSON;
         try {
-            responseJSON = JSON.parse(responseText);
+            responseJSON = responseText ? JSON.parse(responseText) : {};
             console.log("Parsed Packing Response:", responseJSON);
         } catch (e) {
-            console.error("Parsing error for packing list:", e);
-            responseJSON = {}; // Fallback to empty object instead of empty array to match expected structure
-        }
-
-        // Normalize responseJSON to ensure it’s an object with day-based keys
-        const normalizedPackingList = {};
-        if (typeof responseJSON === "object" && responseJSON !== null) {
-            Object.keys(responseJSON).forEach(key => {
-                if (key.startsWith("Day")) {
-                    normalizedPackingList[key] = {
-                        Clothing: Array.isArray(responseJSON[key]?.Clothing) ? responseJSON[key].Clothing : [],
-                        Cosmetics: Array.isArray(responseJSON[key]?.Cosmetics) ? responseJSON[key].Cosmetics : [],
-                        OtherEssentials: Array.isArray(responseJSON[key]?.OtherEssentials) ? responseJSON[key].OtherEssentials : []
-                    };
-                }
-            });
-        } else {
-            console.warn("Unexpected packing list format:", responseJSON);
-            for (let i = 1; i <= (userSelection?.noOfDays || 3); i++) {
-                normalizedPackingList[`Day ${i}`] = {
-                    Clothing: [],
-                    Cosmetics: [],
-                    OtherEssentials: []
-                };
-            }
+            console.error("Failed to parse responseText:", e);
+            responseJSON = {};
         }
 
         await setDoc(
@@ -386,7 +357,7 @@ ${day.activities.map(activity => `
             {
                 tripData: {
                     ...tripData,
-                    packingList: normalizedPackingList,
+                    packingList: responseJSON || {},
                 },
             },
             { merge: true }
@@ -396,7 +367,7 @@ ${day.activities.map(activity => `
             ...prev,
             tripData: {
                 ...prev.tripData,
-                packingList: normalizedPackingList,
+                packingList: responseJSON || {},
             },
         }));
         setShowPacking(true);
@@ -414,11 +385,38 @@ ${day.activities.map(activity => `
         generatePackingList();
     };
 
-    const handleShowShopping = () => {
-        setShowShopping(true);
-    };
-
     const stableTrip = useMemo(() => trip, [trip]);
+
+    const sendEmail = (itineraryText) => {
+        const user = JSON.parse(localStorage.getItem("user"));
+        if (!user?.email) {
+            console.error("No user email found in localStorage");
+            return;
+        }
+
+        emailjs.send(
+            "service_nue47xc", // Service ID
+            "template_rbvlgqc", // Template ID
+            { 
+                email: user.email, 
+                tripId: tripId,
+                destination: trip?.userSelection?.location?.label || "Unknown Destination",
+                startDate: trip?.userSelection?.startDate ? new Date(trip.userSelection.startDate.seconds * 1000).toLocaleDateString() : "Unspecified Date",
+                itinerary: itineraryText // Include the itinerary text in the email
+            }, // Include trip details and itinerary in the email
+            "v0_0UndGhSgkGDJGb" // User ID
+        )
+        .then(
+            (result) => {
+                console.log("Email sent successfully!", result.text);
+                toast.success("Itinerary email sent successfully!");
+            },
+            (error) => {
+                console.error("Failed to send email.", error);
+                toast.error("Failed to send itinerary email.");
+            }
+        );
+    };
 
     return (
         <div className="container my-4">
@@ -499,13 +497,6 @@ ${day.activities.map(activity => `
                     >
                         Packing Details
                     </button>
-                    <button
-                        onClick={handleShowShopping}
-                        className="bg-purple-700 text-white px-4 py-2 rounded hover:bg-purple-800 transition-all"
-                        disabled={!itineraryGenerated}
-                    >
-                        Shopping Sites
-                    </button>
                     {itineraryGenerated && (
                         <div>
                             <PdfMaker trip={trip} selectedHotel={selectedHotel} />
@@ -544,12 +535,6 @@ ${day.activities.map(activity => `
             {showPacking && stableTrip && (
                 <div className="mt-6">
                     <Packing trip={stableTrip} />
-                </div>
-            )}
-
-            {showShopping && stableTrip && (
-                <div className="mt-6">
-                    <Shopping trip={stableTrip} tripId={tripId} />
                 </div>
             )}
         </div>

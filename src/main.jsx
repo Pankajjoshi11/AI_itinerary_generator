@@ -15,6 +15,7 @@ import { ViewTrip } from "./viewTrip/ViewTrip";
 import { MyTrips } from "./components/MyTrips/MyTrips";
 import { AuthProvider } from "./Context/AuthContext";
 import ProtectedRoute from "./Context/ProtectedRoute";
+import DisplayTripDetails from "./DisplayDetails/DisplayTripDetails";
 
 const router = createBrowserRouter(
 	createRoutesFromElements(
@@ -41,6 +42,14 @@ const router = createBrowserRouter(
 				element={
 					<ProtectedRoute>
 						<ViewTrip />
+					</ProtectedRoute>
+				}
+			/>
+			<Route
+				path="/display-trip-details/:tripId"
+				element={
+					<ProtectedRoute>
+						<DisplayTripDetails />
 					</ProtectedRoute>
 				}
 			/>

@@ -107,7 +107,7 @@ function Map({ tripId }) {
         {selectedMarker && (
           <InfoWindow
             position={{ lat: selectedMarker.lat, lng: selectedMarker.lng }}
-            onCloseClick={() => setSelectedMarker(null)}
+            onCloseClick={() => setSelectedMarker(marker)}
           >
             <div>
               <h3 className="font-bold">{selectedMarker.name}</h3>

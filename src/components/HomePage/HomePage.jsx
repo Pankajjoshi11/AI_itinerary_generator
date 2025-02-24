@@ -40,12 +40,13 @@ export const HomePage = () => {
     const [specificPlace, setSpecificPlace] = useState("");
 
     const handleInputChanges = (name, value) => {
+        const processedValue = name === "budget" ? parseInt(value, 10) || 0 : value;
         setFormData({
             ...formData,
-            [name]: value,
+            [name]: processedValue,
         });
         if (name === "location" || name === "startCity") {
-            updateApproxBudget(value);
+            updateApproxBudget(processedValue);
         }
         if (name === "specificPlace") {
             setSpecificPlace(value); // Sync state
@@ -130,142 +131,145 @@ export const HomePage = () => {
 
     return (
         <>
-            <div className="w-full overflow-hidden px-3 md:px-14 lg:px-14 xl:px-40 font-serif ">
-                <Card className="mt-6 border-y-4 p-6">
+            <div className="w-full overflow-hidden px-3 md:px-16 lg:px-24 xl:px-48 font-serif bg-gray-900 text-white min-h-screen">
+                <Card className="mt-12 shadow-2xl bg-gray-800 border-none rounded-2xl p-8">
                     <CardHeader>
-                        <CardTitle className="pt-5  text-left text-lg md:text-2xl lg:text-3xl font-bold tracking-wider md:tracking-widest">
-                            Please share your travel preferences with us🏕️🌴
+                        <CardTitle className="text-4xl font-bold text-center text-white tracking-wide">
+                            Please Share Your Travel Preferences with Us🏕️🌴
                         </CardTitle>
-                        <CardDescription className="pt-5 pb-3 text-justify md:text-left font-light text-sm md:text-lg lg:text-xl tracking-tighter md:tracking-widest">
+                        <CardDescription className="pt-6 pb-4 text-center md:text-left font-light text-lg tracking-normal text-gray-300">
                             Simply provide some basic information, and our trip
                             planner will create a personalized itinerary
                             tailored to your preferences.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <form>
-                            <div className="grid w-full items-center">
-                                <div className="flex flex-col space-y-10">
-                                    <div className="space-y-2">
-                                        <Label
-                                            htmlFor="startCity"
-                                            className="text-base md:text-lg"
-                                        >
-                                            What is your start city?
-                                        </Label>
-                                        <div className="dark:text-slate-800 border-2 dark:border-customGreen border-blue-700">
-                                            <GooglePlacesAutocomplete
-                                                apiKey={
-                                                    import.meta.env
-                                                        .VITE_GOOGLE_PLACE_APIKEY
-                                                }
-                                                selectProps={{
-                                                    startCity,
-                                                    onChange: (val) => {
-                                                        setStartCity(val);
-                                                        handleInputChanges(
-                                                            "startCity",
-                                                            val
-                                                        );
-                                                    },
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label
-                                            htmlFor="name"
-                                            className="text-base md:text-lg"
-                                        >
-                                            What is your preferred destination?
-                                        </Label>
-                                        <div className="dark:text-slate-800 border-2 dark:border-customGreen border-blue-700">
-                                            <GooglePlacesAutocomplete
-                                                apiKey={
-                                                    import.meta.env
-                                                        .VITE_GOOGLE_PLACE_APIKEY
-                                                }
-                                                selectProps={{
-                                                    place,
-                                                    onChange: (val) => {
-                                                        setPlace(val);
-                                                        handleInputChanges(
-                                                            "location",
-                                                            val
-                                                        );
-                                                    },
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
-                                    {approxBudget && (
-                                        <div className="space-y-2">
-                                            <Label
-                                                htmlFor="approxBudget"
-                                                className="text-base md:text-lg"
-                                            >
-                                                Approximate Budget
-                                            </Label>
-                                            <div className="text-slate-800">
-                                                <p>Low-cost: {approxBudget.low}</p>
-                                                <p>Moderate: {approxBudget.moderate}</p>
-                                                <p>Luxury: {approxBudget.luxury}</p>
-                                            </div>
-                                        </div>
-                                    )}
-                                    <div>
-                                        <Label
-                                            htmlFor="days"
-                                            className="text-base md:text-lg"
-                                        >
-                                            How many days do you plan to spend
-                                            on your trip?
-                                        </Label>
-                                        <Input
-                                            id="days"
-                                            type="number"
-                                            placeholder="ex. 3"
-                                            min="0"
-                                            onChange={(e) =>
-                                                handleInputChanges(
-                                                    "noOfDays",
-                                                    e.target.value
-                                                )
+                        <form className="space-y-8">
+                            <div className="grid gap-8">
+                                <div className="space-y-4">
+                                    <Label
+                                        htmlFor="startCity"
+                                        className="text-xl font-medium text-green-400"
+                                    >
+                                        What is your start city?
+                                    </Label>
+                                    <div className="dark:text-slate-800 border-2 border-green-500 bg-gray-700 rounded-lg shadow-md">
+                                        <GooglePlacesAutocomplete
+                                            apiKey={
+                                                import.meta.env
+                                                    .VITE_GOOGLE_PLACE_APIKEY
                                             }
-                                            onKeyDown={handleKeyDown}
-                                            className="border-2 dark:border-customGreen border-blue-700 bg-white text-slate-800 "
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label
-                                            htmlFor="startDate"
-                                            className="text-base md:text-lg"
-                                        >
-                                            When do you plan to start your trip?
-                                        </Label>
-                                        <DatePicker
-                                            selected={startDate}
-                                            onChange={(date) => {
-                                                setStartDate(date);
-                                                handleInputChanges(
-                                                    "startDate",
-                                                    date
-                                                );
+                                            selectProps={{
+                                                startCity,
+                                                onChange: (val) => {
+                                                    setStartCity(val);
+                                                    handleInputChanges(
+                                                        "startCity",
+                                                        val
+                                                    );
+                                                },
                                             }}
-                                            className="border-2 dark:border-customGreen border-blue-700 bg-white text-slate-800 w-full"
+                                            className="text-black"
                                         />
                                     </div>
-                                    <div>
+                                </div>
+                                <div className="space-y-4">
+                                    <Label
+                                        htmlFor="name"
+                                        className="text-xl font-medium text-green-400"
+                                    >
+                                        What is your preferred destination?
+                                    </Label>
+                                    <div className="dark:text-slate-800 border-2 border-green-500 bg-gray-700 rounded-lg shadow-md">
+                                        <GooglePlacesAutocomplete
+                                            apiKey={
+                                                import.meta.env
+                                                    .VITE_GOOGLE_PLACE_APIKEY
+                                            }
+                                            selectProps={{
+                                                place,
+                                                onChange: (val) => {
+                                                    setPlace(val);
+                                                    handleInputChanges(
+                                                        "location",
+                                                        val
+                                                    );
+                                                },
+                                            }}
+                                            className="text-black"
+                                        />
+                                    </div>
+                                </div>
+                                {approxBudget && (
+                                    <div className="space-y-4">
                                         <Label
-                                            htmlFor="budget"
-                                            className="text-base md:text-lg"
+                                            htmlFor="approxBudget"
+                                            className="text-xl font-medium text-green-400"
                                         >
-                                            What's your spending limit?
+                                            Approximate Budget
                                         </Label>
+                                        <div className="p-4 bg-gray-700 rounded-lg shadow-md text-white">
+                                            <p>Low-cost: {approxBudget.low}</p>
+                                            <p>Moderate: {approxBudget.moderate}</p>
+                                            <p>Luxury: {approxBudget.luxury}</p>
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="space-y-4">
+                                    <Label
+                                        htmlFor="days"
+                                        className="text-xl font-medium text-green-400"
+                                    >
+                                        How many days do you plan to spend
+                                        on your trip?
+                                    </Label>
+                                    <Input
+                                        id="days"
+                                        type="number"
+                                        placeholder="ex. 3"
+                                        min="0"
+                                        onChange={(e) =>
+                                            handleInputChanges(
+                                                "noOfDays",
+                                                e.target.value
+                                            )
+                                        }
+                                        onKeyDown={handleKeyDown}
+                                        className="border-2 border-green-500 bg-gray-700 text-white placeholder-gray-400 rounded-lg shadow-md focus:ring-2 focus:ring-green-400 focus:border-transparent"
+                                    />
+                                </div>
+                                <div className="space-y-4">
+                                    <Label
+                                        htmlFor="startDate"
+                                        className="text-xl font-medium text-green-400"
+                                    >
+                                        When do you plan to start your trip?
+                                    </Label>
+                                    <DatePicker
+                                        selected={startDate}
+                                        onChange={(date) => {
+                                            setStartDate(date);
+                                            handleInputChanges(
+                                                "startDate",
+                                                date
+                                            );
+                                        }}
+                                        className="w-full border-2 border-green-500 bg-gray-700 text-white placeholder-gray-400 rounded-lg shadow-md p-2 focus:ring-2 focus:ring-green-400 focus:border-transparent"
+                                        dateFormat="yyyy-MM-dd"
+                                    />
+                                </div>
+                                <div className="space-y-4">
+                                    <Label
+                                        htmlFor="budget"
+                                        className="text-xl font-medium text-green-400"
+                                    >
+                                        What's your spending limit?
+                                    </Label>
+                                    <div className="p-4 bg-gray-700 rounded-lg shadow-md">
                                         <Slider
-                                            className="w-full h-6 mt-2"
-                                            thumbClassName="h-6 w-6 bg-blue-700 rounded-full flex items-center justify-center cursor-pointer"
-                                            trackClassName="h-2 bg-gray-300"
+                                            className="w-full h-4 mt-2"
+                                            thumbClassName="h-6 w-6 bg-green-500 rounded-full flex items-center justify-center cursor-pointer shadow-lg"
+                                            trackClassName="h-2 bg-gray-500 rounded-full"
                                             value={budget}
                                             min={approxBudget ? approxBudget.low : 0}
                                             max={approxBudget ? approxBudget.luxury : 100000}
@@ -279,73 +283,82 @@ export const HomePage = () => {
                                                 </div>
                                             )}
                                         />
-                                        <div className="text-white mt-2">
-                                            Selected Budget: {budget}
+                                        <div className="text-white mt-4 text-lg font-medium">
+                                            Selected Budget: {budget} INR
                                         </div>
                                     </div>
-                                    <div>
-                                        <Label
-                                            htmlFor="noOfPeople"
-                                            className="text-base md:text-lg"
-                                        >
-                                            Who are you planning to travel with
-                                            on your next adventure?
-                                        </Label>
-                                        <div className="grid grid-cols-2 mt-5 cursor-pointer text-[14px] md:text-base lg:text-base items-center text-center">
-                                            {SelectTravelerList.map(
-                                                (item, index) => (
-                                                    <div
-                                                        key={index}
-                                                        onClick={() =>
-                                                            handleInputChanges(
-                                                                "people",
-                                                                item.people
-                                                            )
-                                                        }
-                                                        className={`p-1 m-1 md:p-4 md:m-3 border-2 mb-2 rounded-lg dark:border-customGreen border-blue-700 hover:shadow-lg dark:hover:shadow-customGreen hover:shadow-blue-700  ${
-                                                            formData?.people ===
-                                                                item.people &&
-                                                            `shadow-lg border-2 dark:shadow-customGreen shadow-blue-700`
-                                                        }`}
-                                                    >
-                                                        <h2 className="font-bold">
-                                                            <span className="text-xl">
-                                                                {item.icon}
-                                                            </span>{" "}
-                                                            {item.title}
-                                                        </h2>
-                                                        <h2 className="text-gray-600 dark:text-gray-400">
-                                                            {item.des}
-                                                        </h2>
-                                                    </div>
-                                                )
-                                            )}
-                                        </div>
+                                </div>
+                                <div className="space-y-4">
+                                    <Label
+                                        htmlFor="noOfPeople"
+                                        className="text-xl font-medium text-green-400"
+                                    >
+                                        Who are you planning to travel with
+                                        on your next adventure?
+                                    </Label>
+                                    <div className="grid grid-cols-2 gap-4 mt-6 cursor-pointer text-lg items-center">
+                                        {SelectTravelerList.map(
+                                            (item, index) => (
+                                                <div
+                                                    key={index}
+                                                    onClick={() =>
+                                                        handleInputChanges(
+                                                            "people",
+                                                            item.people
+                                                        )
+                                                    }
+                                                    className={`p-4 border-2 border-green-500 bg-gray-700 rounded-lg shadow-md hover:shadow-xl transition-all duration-200 ${
+                                                        formData?.people ===
+                                                            item.people &&
+                                                        `shadow-xl border-green-600`
+                                                    }`}
+                                                >
+                                                    <h2 className="font-bold text-white">
+                                                        <span className="text-2xl text-green-400">
+                                                            {item.icon}
+                                                        </span>{" "}
+                                                        {item.title}
+                                                    </h2>
+                                                    <h2 className="text-gray-300 mt-2">
+                                                        {item.des}
+                                                    </h2>
+                                                </div>
+                                            )
+                                        )}
                                     </div>
-                                    <div>
-										<Label htmlFor="specificPlace" className="text-base md:text-lg">
-											Any specific place you want to add to the itinerary? (Optional)
-										</Label>
-										<Input
-											id="specificPlace"
-											type="text"
-											placeholder="Enter a specific place"
-											onChange={(e) => handleInputChanges("specificPlace", e.target.value)}
-											className="border-2 dark:border-customGreen border-blue-700 bg-white text-slate-800"
-										/>
-									</div>
+                                </div>
+                                <div className="space-y-4">
+                                    <Label
+                                        htmlFor="specificPlace"
+                                        className="text-xl font-medium text-green-400"
+                                    >
+                                        Any specific place you want to add to the
+                                        itinerary? (Optional)
+                                    </Label>
+                                    <Input
+                                        id="specificPlace"
+                                        type="text"
+                                        placeholder="Enter a specific place"
+                                        onChange={(e) =>
+                                            handleInputChanges(
+                                                "specificPlace",
+                                                e.target.value
+                                            )
+                                        }
+                                        className="border-2 border-green-500 bg-gray-700 text-white placeholder-gray-400 rounded-lg shadow-md focus:ring-2 focus:ring-green-400 focus:border-transparent"
+                                    />
                                 </div>
                             </div>
                         </form>
                     </CardContent>
-                    <CardFooter className="flex justify-end mt-5">
+                    <CardFooter className="flex justify-end mt-8">
                         <Button
                             disabled={loading}
                             onClick={onGenerateTrip}
-                            className="bg-blue-700 hover:bg-indigo-700 dark:text-white hover:shadow-xl transition ease-in-out delay-150 hover:-translate-y-1 hover:scale-100 md:text-lg"
+                            className="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 text-xl font-semibold"
                         >
                             {loading ? (
-                                <AiOutlineLoading3Quarters className="h-7 w-7 animate-spin" />
+                                <AiOutlineLoading3Quarters className="h-6 w-6 animate-spin" />
                             ) : (
                                 "Generate Trip"
                             )}

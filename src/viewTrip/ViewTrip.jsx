@@ -294,7 +294,7 @@ export const ViewTrip = () => {
                             {stableTrip.tripData?.hotels.map((hotel, index) => (
                                 <div
                                     key={index}
-                                    className="border p-4 rounded-lg cursor-pointer hover:bg-gray-100"
+                                    className="border p-4 rounded-lg cursor-pointer hover:bg-gray-500"
                                     onClick={() => handleHotelSelect(hotel)}
                                 >
                                     <img

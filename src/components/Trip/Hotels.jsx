@@ -1,63 +1,58 @@
 import React from "react";
-import { Link } from "react-router-dom";
-import { Card } from "../ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 
-export const Hotels = ({ trip }) => {
-	return (
-		<Card className="border-y-2 p-5 bg-white dark:bg-gray-900 shadow-lg rounded-lg">
-			<h1 className="font-bold text-lg md:text-2xl mt-7 md:mt-10 lg:mt-16 mb-4 text-blue-800 dark:text-customGreen text-center">
-				🏨 Hotel Recommendations 🏨
-			</h1>
-			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-				{trip?.tripData?.hotels?.map((hotel, index) => (
-					<div
-						key={index}
-						className="bg-white dark:bg-gray-800 border border-blue-700 dark:border-customGreen shadow-md rounded-lg overflow-hidden hover:scale-105 transition-all duration-300"
-					>
-						<Link
-							to={`https://www.google.com/maps/search/?api=1&query=${hotel.HotelName} ${hotel.HotelAddress} ${trip?.userSelection?.location?.label}`}
-							target="_blank"
-							className="block"
-						>
-							{/* Hotel Image */}
-							<div className="relative">
-								<img
-									src={hotel.HotelImageURL || "/trip.jpg"}
-									alt={`Image of ${hotel.HotelName}`}
-									className="w-full h-52 object-cover rounded-t-lg transition-transform duration-300 hover:brightness-75"
-									onError={(e) => (e.target.src = "/trip.jpg")}
-								/>
-							</div>
+export const Hotels = ({ trip, onSelectHotel }) => {
+  const handleHotelSelect = (hotel) => {
+    if (onSelectHotel) {
+      onSelectHotel(hotel);
+    }
+  };
 
-							{/* Hotel Details */}
-							<div className="p-4">
-								<h2 className="font-semibold text-lg text-gray-900 dark:text-white">
-									🏛️ {hotel.HotelName}
-								</h2>
-								<p className="text-gray-600 dark:text-gray-300 text-sm">
-									{hotel.Description}
-								</p>
-								<p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
-									<span className="font-semibold">📍 Address:</span> {hotel.HotelAddress}
-								</p>
-								<p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
-									<span className="font-semibold">💰 Price:</span> {hotel.Price}
-								</p>
-								<p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
-									<span className="font-semibold">⭐ Rating:</span> {hotel.Rating}
-								</p>
+  const userBudget = trip?.userSelection?.budget || 0;
+  const halfBudget = userBudget / 2;
 
-								{/* View on Map Button */}
-								<div className="mt-4">
-									<button className="w-full bg-blue-600 dark:bg-customGreen text-white py-2 rounded-lg text-sm font-semibold transition-transform duration-300 hover:scale-105">
-										View on Map
-									</button>
-								</div>
-							</div>
-						</Link>
-					</div>
-				))}
-			</div>
-		</Card>
-	);
+  return (
+    <div className="w-full max-w-6xl mx-auto p-6 bg-gray-900 text-white rounded-lg shadow-lg">
+      <h2 className="text-3xl font-bold mb-8 text-center text-white border-b pb-4 border-gray-700">
+        Select a Hotel
+      </h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {trip?.tripData?.hotels
+          ?.filter((hotel) => {
+            const hotelPrice = parseInt(hotel.Price.replace(/\D/g, ""), 10) || 0;
+            return hotelPrice >= halfBudget * 0.8 && hotelPrice <= halfBudget * 1.2;
+          })
+          .map((hotel, index) => (
+            <Card
+              key={index}
+              className="overflow-hidden rounded-lg shadow-md bg-gray-800 border border-gray-700 transition-transform transform hover:scale-105 hover:shadow-2xl cursor-pointer"
+              onClick={() => handleHotelSelect(hotel)}
+            >
+              <div className="relative h-52 w-full rounded-t-lg overflow-hidden">
+                <img
+                  src={hotel.HotelImageURL || "/default.jpg"}
+                  alt={hotel.HotelName}
+                  className="w-full h-full object-cover transition-opacity duration-300 hover:opacity-90"
+                  onError={(e) => (e.target.src = "/default.jpg")}
+                />
+              </div>
+              <CardContent className="p-6">
+                <h3 className="text-2xl font-bold text-white mb-3 truncate">
+                  {hotel.HotelName}
+                </h3>
+                <p className="text-gray-400 mb-2 truncate">{hotel.HotelAddress}</p>
+                <p className="text-green-400 text-lg font-semibold mb-2">{hotel.Price}</p>
+                <p className="text-yellow-400 font-medium mb-2">Rating: {hotel.Rating || "Not rated"}</p>
+                <p className="text-gray-300 text-sm line-clamp-3">{hotel.Description || "No description available."}</p>
+              </CardContent>
+            </Card>
+          ))}
+      </div>
+      {trip?.tripData?.hotels?.filter((hotel) => parseInt(hotel.Price.replace(/\D/g, ""), 10) || 0).length === 0 && (
+        <p className="text-center text-gray-400 mt-6 text-lg">No hotels found within the budget range.</p>
+      )}
+    </div>
+  );
 };
+
+export default Hotels;

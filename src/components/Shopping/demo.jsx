@@ -107,6 +107,7 @@ export const ViewTrip = () => {
             .replace("{startingGeoCoordinates}", startingGeoCoordinates) // Use selected hotel's coordinates
             .replace("{startDate}", formattedDate)
             .replace("{specificPlace}", userSelection?.specificPlace || "");
+            // .replace("{mood}", userSelection?.mood || "relaxing"); // Default to "relaxing" if not specified
 
         console.log("Generated Prompt:", prompt); // Log the prompt for debugging
 

@@ -22,6 +22,7 @@ const PdfMaker = ({ trip, selectedHotel }) => {
         const pink = [255, 192, 203]; // Pink for activity names (#FFC0CB)
         const lightBlue = [173, 216, 230]; // Light blue for subtle accents (#ADD8E6)
         const gray = [192, 192, 192]; // Gray for details (#C0C0C0)
+        const black=[0,0,0]
 
         // Set fonts and styles
         doc.setFont("helvetica", "bold");
@@ -82,7 +83,7 @@ const PdfMaker = ({ trip, selectedHotel }) => {
                     doc.text(`Activity ${activityIndex + 1}: ${activity.PlaceName || "Not Available"}`, 20, yOffset);
                     yOffset += 5;
 
-                    doc.setTextColor(...gray); // Gray for details
+                    doc.setTextColor(...black); // Gray for details
                     doc.text(`Details: ${activity.PlaceDetails || "Not Available"}`, 25, yOffset);
                     yOffset += 5;
                     doc.text(`Ticket: ${activity.TicketPricing || "Not Available"}`, 25, yOffset);
@@ -101,7 +102,7 @@ const PdfMaker = ({ trip, selectedHotel }) => {
                     }
                 });
             } else {
-                doc.setTextColor(...gray); // Gray for no activities
+                doc.setTextColor(...black); // Gray for no activities
                 doc.text("No activities available for this day.", 20, yOffset);
                 yOffset += 10;
             }
@@ -114,7 +115,7 @@ const PdfMaker = ({ trip, selectedHotel }) => {
 
         // Budget (Footer-like placement)
         doc.setFont("helvetica", "bold");
-        doc.setTextColor(...lightBlue); // Light blue for budget
+        doc.setTextColor(...black); // Light blue for budget
         doc.text(`Approximate Total Budget (excluding flights): ₹${tripData?.approximateTotalBudget || 0} INR`, pageWidth / 2, pageHeight - 15, { align: "center" });
 
         // Add footer with page numbers
@@ -122,7 +123,7 @@ const PdfMaker = ({ trip, selectedHotel }) => {
         for (let i = 1; i <= totalPages; i++) {
             doc.setPage(i);
             doc.setFontSize(8);
-            doc.setTextColor(...gray); // Gray for footer
+            doc.setTextColor(...black); // Gray for footer
             doc.text(`Page ${i} of ${totalPages}`, pageWidth / 2, pageHeight - 5, { align: "center" });
         }
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import GooglePlacesAutocomplete from "react-google-places-autocomplete";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
     AI_PROMPT_HOTELS,
-    SelectBudgetOptions,
+    TripMoodOptions,
     SelectTravelerList,
     CityBudgets,
 } from "@/constants/options";
@@ -29,43 +29,71 @@ import Slider from "react-slider";
 import { FaRupeeSign } from "react-icons/fa";
 
 export const HomePage = () => {
-    const [place, setPlace] = useState();
-    const [startCity, setStartCity] = useState();
+    const [place, setPlace] = useState(null); // Initialize as null to handle undefined
+    const [startCity, setStartCity] = useState(null); // Initialize as null to handle undefined
     const [startDate, setStartDate] = useState(new Date());
-    const [formData, setFormData] = useState([]);
+    const [formData, setFormData] = useState({
+        noOfDays: 0,
+        location: null,
+        budget: 0,
+        people: "",
+        startCity: null,
+        startDate: new Date(),
+        mood: "", // Added mood to formData
+        specificPlace: "",
+    });
     const [openDialog, setOpenDialog] = useState(false);
     const [loading, setLoading] = useState(false);
     const [approxBudget, setApproxBudget] = useState(null);
     const [budget, setBudget] = useState(0);
-    const [specificPlace, setSpecificPlace] = useState("");
+    const [specificPlace, setSpecificPlace] = useState(""); // Maintain separate state for specificPlace
+    const [selectedMood, setSelectedMood] = useState(""); // Maintain separate state for mood
 
-    const handleInputChanges = (name, value) => {
-        const processedValue = name === "budget" ? parseInt(value, 10) || 0 : value;
-        setFormData({
-            ...formData,
+    // Memoize handleInputChanges to prevent unnecessary re-renders
+    const handleInputChanges = useCallback((name, value) => {
+        const processedValue = name === "budget" 
+            ? parseInt(value, 10) || 0 
+            : name === "location" || name === "startCity" 
+            ? value 
+            : value || "";
+
+        setFormData((prev) => ({
+            ...prev,
             [name]: processedValue,
-        });
+        }));
+
         if (name === "location" || name === "startCity") {
             updateApproxBudget(processedValue);
         }
         if (name === "specificPlace") {
-            setSpecificPlace(value); // Sync state
+            setSpecificPlace(value); // Sync specificPlace state
         }
-    };
+        if (name === "mood") {
+            setSelectedMood(value); // Sync mood state
+        }
+    }, []); // No dependencies needed since it only updates formData
 
     const updateApproxBudget = (value) => {
         const city = value?.label || value;
         if (CityBudgets[city]) {
             setApproxBudget(CityBudgets[city]);
+            // Reset budget slider to moderate if approxBudget changes
+            if (formData.budget === 0) {
+                handleInputChanges("budget", CityBudgets[city].moderate);
+                setBudget(CityBudgets[city].moderate);
+            }
         } else {
             setApproxBudget(null);
         }
     };
 
-    useEffect(() => {}, [formData]);
+    useEffect(() => {
+        // Log formData for debugging
+        console.log("Form Data Updated:", formData);
+    }, [formData]);
 
     const onGenerateTrip = async () => {
-        const user = localStorage.getItem("user");
+        const user = JSON.parse(localStorage.getItem("user"));
 
         if (!user) {
             setOpenDialog(true);
@@ -73,15 +101,16 @@ export const HomePage = () => {
         }
 
         if (
-            formData?.noOfDays > 15 ||
-            formData?.noOfDays < 1 ||
-            !formData?.location ||
-            !formData?.budget ||
-            !formData?.people ||
-            !formData?.startCity ||
-            !formData?.startDate
+            !formData.noOfDays ||
+            formData.noOfDays > 15 ||
+            formData.noOfDays < 1 ||
+            !formData.location ||
+            !formData.budget ||
+            !formData.people ||
+            !formData.startCity ||
+            !formData.startDate
         ) {
-            toast("Please fill all details!");
+            toast("Please fill all required details!");
             return;
         }
 
@@ -91,17 +120,24 @@ export const HomePage = () => {
         );
 
         const FINAL_PROMPT = AI_PROMPT_HOTELS
-            .replace("{people}", formData?.people)
-            .replace("{location}", formData?.location?.label)
-            .replace("{budget}", formData?.budget);
+            .replace("{people}", formData.people)
+            .replace("{location}", formData.location.label)
+            .replace("{budget}", formData.budget)
+            .replace("{mood}", selectedMood || "relaxed"); // Include mood in the prompt
 
-        const result = await chatSession.sendMessage(FINAL_PROMPT);
-        const responseText = result?.response?.text();
-        console.log("--", responseText);
+        try {
+            const result = await chatSession.sendMessage(FINAL_PROMPT);
+            const responseText = result?.response?.text();
+            console.log("Raw AI Response for Hotels:", responseText);
 
-        const responseJSON = JSON.parse(responseText);
-        setLoading(false);
-        saveAiTrip(responseJSON);
+            const responseJSON = JSON.parse(responseText);
+            setLoading(false);
+            await saveAiTrip(responseJSON);
+        } catch (error) {
+            console.error("Error generating trip:", error);
+            setLoading(false);
+            toast.error("Failed to generate trip. Please try again.");
+        }
     };
 
     const navigate = useNavigate();
@@ -110,17 +146,24 @@ export const HomePage = () => {
         setLoading(true);
         const user = JSON.parse(localStorage.getItem("user"));
         const docId = Date.now().toString();
-        await setDoc(doc(db, "AItrip", docId), {
-            userSelection: {
-                ...formData,
-                specificPlace: specificPlace || "", // Include specificPlace
-            },
-            tripData: { hotels: TripData.hotels || [] },
-            userEmail: user?.email,
-            id: docId,
-        });
-        setLoading(false);
-        navigate("/view-trip/" + docId);
+        try {
+            await setDoc(doc(db, "AItrip", docId), {
+                userSelection: {
+                    ...formData,
+                    specificPlace: specificPlace || "",
+                    mood: selectedMood || "", // Include mood in userSelection
+                },
+                tripData: { hotels: TripData.hotels || [] },
+                userEmail: user?.email,
+                id: docId,
+            });
+            setLoading(false);
+            navigate("/view-trip/" + docId);
+        } catch (error) {
+            console.error("Error saving trip to Firestore:", error);
+            setLoading(false);
+            toast.error("Failed to save trip. Please try again.");
+        }
     };
 
     const handleKeyDown = (event) => {
@@ -135,7 +178,7 @@ export const HomePage = () => {
                 <Card className="mt-12 shadow-2xl bg-gray-800 border-none rounded-2xl p-8">
                     <CardHeader>
                         <CardTitle className="text-4xl font-bold text-center text-white tracking-wide">
-                            Please Share Your Travel Preferences with Us🏕️🌴
+                            Please Share Your Travel Preferences with Us🏕🌴
                         </CardTitle>
                         <CardDescription className="pt-6 pb-4 text-center md:text-left font-light text-lg tracking-normal text-gray-300">
                             Simply provide some basic information, and our trip
@@ -168,6 +211,8 @@ export const HomePage = () => {
                                                         val
                                                     );
                                                 },
+                                                placeholder: "Search for your start city...",
+                                                isClearable: true,
                                             }}
                                             className="text-black"
                                         />
@@ -195,6 +240,8 @@ export const HomePage = () => {
                                                         val
                                                     );
                                                 },
+                                                placeholder: "Search for your destination...",
+                                                isClearable: true,
                                             }}
                                             className="text-black"
                                         />
@@ -209,9 +256,9 @@ export const HomePage = () => {
                                             Approximate Budget
                                         </Label>
                                         <div className="p-4 bg-gray-700 rounded-lg shadow-md text-white">
-                                            <p>Low-cost: {approxBudget.low}</p>
-                                            <p>Moderate: {approxBudget.moderate}</p>
-                                            <p>Luxury: {approxBudget.luxury}</p>
+                                            <p>Low-cost: {approxBudget.low} INR</p>
+                                            <p>Moderate: {approxBudget.moderate} INR</p>
+                                            <p>Luxury: {approxBudget.luxury} INR</p>
                                         </div>
                                     </div>
                                 )}
@@ -226,8 +273,10 @@ export const HomePage = () => {
                                     <Input
                                         id="days"
                                         type="number"
-                                        placeholder="ex. 3"
-                                        min="0"
+                                        placeholder="Ex. 3"
+                                        min="1"
+                                        max="15"
+                                        value={formData.noOfDays || ""}
                                         onChange={(e) =>
                                             handleInputChanges(
                                                 "noOfDays",
@@ -246,7 +295,7 @@ export const HomePage = () => {
                                         When do you plan to start your trip?
                                     </Label>
                                     <DatePicker
-                                        selected={startDate}
+                                        selected={formData.startDate}
                                         onChange={(date) => {
                                             setStartDate(date);
                                             handleInputChanges(
@@ -254,8 +303,10 @@ export const HomePage = () => {
                                                 date
                                             );
                                         }}
+                                        minDate={new Date()} // Prevent past dates
                                         className="w-full border-2 border-green-500 bg-gray-700 text-white placeholder-gray-400 rounded-lg shadow-md p-2 focus:ring-2 focus:ring-green-400 focus:border-transparent"
                                         dateFormat="yyyy-MM-dd"
+                                        placeholderText="Select start date"
                                     />
                                 </div>
                                 <div className="space-y-4">
@@ -263,7 +314,7 @@ export const HomePage = () => {
                                         htmlFor="budget"
                                         className="text-xl font-medium text-green-400"
                                     >
-                                        What's your spending limit?
+                                        What's your spending limit? (Excluding Flights)
                                     </Label>
                                     <div className="p-4 bg-gray-700 rounded-lg shadow-md">
                                         <Slider
@@ -308,9 +359,10 @@ export const HomePage = () => {
                                                         )
                                                     }
                                                     className={`p-4 border-2 border-green-500 bg-gray-700 rounded-lg shadow-md hover:shadow-xl transition-all duration-200 ${
-                                                        formData?.people ===
-                                                            item.people &&
-                                                        `shadow-xl border-green-600`
+                                                        formData.people ===
+                                                        item.people
+                                                            ? "shadow-xl border-green-600 bg-gray-600"
+                                                            : ""
                                                     }`}
                                                 >
                                                     <h2 className="font-bold text-white">
@@ -339,6 +391,7 @@ export const HomePage = () => {
                                         id="specificPlace"
                                         type="text"
                                         placeholder="Enter a specific place"
+                                        value={specificPlace}
                                         onChange={(e) =>
                                             handleInputChanges(
                                                 "specificPlace",
@@ -347,6 +400,40 @@ export const HomePage = () => {
                                         }
                                         className="border-2 border-green-500 bg-gray-700 text-white placeholder-gray-400 rounded-lg shadow-md focus:ring-2 focus:ring-green-400 focus:border-transparent"
                                     />
+                                </div>
+                                <div className="space-y-4">
+                                    <Label
+                                        htmlFor="tripMood"
+                                        className="text-xl font-medium text-green-400"
+                                    >
+                                        What kind of mood are you looking for in this trip?
+                                    </Label>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                        {TripMoodOptions.map((mood, index) => (
+                                            <div
+                                                key={index}
+                                                onClick={() => {
+                                                    setSelectedMood(mood.value);
+                                                    handleInputChanges("mood", mood.value);
+                                                }}
+                                                className={`p-4 border-2 border-green-500 bg-gray-700 rounded-lg shadow-md hover:shadow-xl transition-all duration-200 cursor-pointer ${
+                                                    formData.mood === mood.value
+                                                        ? "shadow-xl border-green-600 bg-gray-600"
+                                                        : ""
+                                                }`}
+                                            >
+                                                <div className="text-center">
+                                                    <span className="text-3xl mb-2 text-green-400">{mood.icon}</span>
+                                                    <h3 className="text-lg font-semibold text-white">
+                                                        {mood.title}
+                                                    </h3>
+                                                    <p className="text-sm text-gray-300 mt-1">
+                                                        {mood.description}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         </form>
@@ -369,3 +456,5 @@ export const HomePage = () => {
         </>
     );
 };
+
+export default HomePage;

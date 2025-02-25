@@ -41,6 +41,44 @@ export const CityBudgets = {
     },
     // Add more cities and their budgets here
 };
+export const TripMoodOptions = [
+    {
+        title: "Adventurous",
+        icon: "🏃‍♂",
+        description: "Thrilling activities and exciting experiences",
+        value: "adventurous"
+    },
+    {
+        title: "Romantic",
+        icon: "💑",
+        description: "Intimate and memorable moments",
+        value: "romantic"
+    },
+    {
+        title: "Relaxing",
+        icon: "🌴",
+        description: "Peaceful and rejuvenating experiences",
+        value: "relaxing"
+    },
+    {
+        title: "Cultural",
+        icon: "🏛",
+        description: "Rich in history and local traditions",
+        value: "cultural"
+    },
+    {
+        title: "Party",
+        icon: "🎉",
+        description: "Vibrant nightlife and social scenes",
+        value: "party"
+    },
+    {
+        title: "Family-Friendly",
+        icon: "👨‍👩‍👧‍👦",
+        description: "Activities suitable for all ages",
+        value: "family"
+    }
+];
 export const SelectBudgetOptions = [
 	{
 		id: 1,
@@ -66,13 +104,14 @@ export const AI_PROMPT_FLIGHTS =
     "Generate a list of flight options for {people} traveling from {fromLocation} to {toLocation} on {date} within a budget of {budget} INR. Return the result as a JSON array where each element contains: AirlineName, FlightNumber, DepartureTime, ArrivalTime, DepartureAirport, ArrivalAirport, Price, FlightDuration, and BookingURL. Example: [{'AirlineName': 'Example', ...}, ...].";
 /* prettier-ignore */
 export const AI_PROMPT =
-	"Generate a {noOfDays}-days travel plan for a {people} in {location} on a {budget} budget. \n\nProvide: 1. A list of \"hotels\" with the following details: HotelName, HotelAddress, Price, HotelImageURL from Google images, GeoCoordinates, Rating, and Description.\n\t      2. Suggest an \"itinerary\" including- PlaceName, PlaceDetails, PlaceImageURL, GeoCoordinates, TicketPricing, TravelTime to Each Location, and the Best Time to Visit.\n\t\t\t\nPresent this information in JSON format.";
+	"Generate a {noOfDays}-days travel plan for a {people} in {location} on a {budget} budget. \n\nProvide: 1. A list of \"hotels\" with the following details: HotelName, HotelAddress, Price, HotelImageURL from Google images, GeoCoordinates, Rating, and Description.\n\t      2. Suggest an \"itinerary\" including- PlaceName, PlaceDetails, PlaceImageURL, GeoCoordinates, TicketPricing, TravelTime to Each Location, and the Best Time to Visit The trip should have a {mood} mood....\n\t\t\t\nPresent this information in JSON format.";
 
 export const AI_PROMPT_HOTELS =
     "Generate a list of hotels for a {people} in {location} on a budget where the hotel prices are approximately half of {budget} INR. Provide the following details for each hotel: HotelName, HotelAddress, Price, HotelImageURL from Google images, GeoCoordinates, Rating, and Description. Present this information in JSON format.";
 /* prettier-ignore */
 export const AI_PROMPT_ITINERARY =
-    "Generate a {noOfDays}-days travel itinerary for {people} in {location} starting on {startDate} (in YYYY-MM-DD format) on an approximate {budget} INR budget, beginning from the hotel '{HotelName}' at GeoCoordinates {startingGeoCoordinates}. Include {specificPlace} as a mandatory stop in the itinerary if provided, ensuring no user-requested locations are missed. Suggest an itinerary with activities ordered logically based on proximity and travel efficiency, starting with locations closest to the hotel and progressing outward or in a practical travel sequence, tailored to the season at {location} during {startDate} (e.g., summer, winter, monsoon, considering weather and seasonal events). For each activity, include: PlaceName, PlaceDetails, PlaceImageURL, GeoCoordinates, TicketPricing, TravelTime from the previous location (or hotel for the first activity), BestTimeToVisit, and HowToTravel (suggest a mode of transportation such as train, bus, local vehicle, car, or plane, explicitly stating the starting point, e.g., 'Taxi from hotel' for the first activity or 'Bus from [previous PlaceName]' for subsequent activities, considering distance, budget, and practicality). Present this information in JSON format. At the end, provide an 'ApproximateTotalBudget' field (in INR) for the entire trip, excluding flight costs but including all local transportation costs at the destination based on the suggested HowToTravel options.";
+    "Generate a {noOfDays}-days travel itinerary for {people} in {location} starting on {startDate} (in YYYY-MM-DD format) on an approximate {budget} INR budget, beginning from the hotel at GeoCoordinates {startingGeoCoordinates}. Include {specificPlace} as a mandatory stop in the itinerary if provided, ensuring no user-requested locations are missed. Suggest an itinerary with activities ordered logically based on proximity and travel efficiency, starting with locations closest to the hotel and progressing outward or in a practical travel sequence, tailored to the season at {location} during {startDate} (e.g., summer, winter, monsoon, considering weather and seasonal events). For each activity, include: PlaceName, PlaceDetails, PlaceImageURL, GeoCoordinates, TicketPricing, TravelTime from the previous location (or hotel for the first activity), BestTimeToVisit, and HowToTravel (suggest a mode of transportation such as train, bus, local vehicle, car, or plane, explicitly stating the starting point, e.g., 'Taxi from hotel' for the first activity or 'Bus from [previous PlaceName]' for subsequent activities, considering distance, budget, and practicality). Present this information in JSON format. At the end, provide an 'ApproximateTotalBudget' field (in INR) for the entire trip, excluding flight costs but including all local transportation costs at the destination based on the suggested HowToTravel options.";
+
 // src/constants/options.js
 // src/constants/options.js
 export const AI_PROMPT_PACKING = 

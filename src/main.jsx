@@ -16,6 +16,7 @@ import { MyTrips } from "./components/MyTrips/MyTrips";
 import { AuthProvider } from "./Context/AuthContext";
 import ProtectedRoute from "./Context/ProtectedRoute";
 import DisplayTripDetails from "./DisplayDetails/DisplayTripDetails";
+import TripDetailsForm from "./components/HomePage/TripDetailsForm";
 
 const router = createBrowserRouter(
 	createRoutesFromElements(
@@ -45,6 +46,7 @@ const router = createBrowserRouter(
 					</ProtectedRoute>
 				}
 			/>
+			<Route path="/trip-details/:destinationName" element={<TripDetailsForm />} />
 			<Route
 				path="/display-trip-details/:tripId"
 				element={

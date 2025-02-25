@@ -1,9 +1,8 @@
-import React, { useEffect, useState, useCallback } from "react";
-import GooglePlacesAutocomplete from "react-google-places-autocomplete";
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
 import { chatSession } from "@/services/AImodel";
-import { useNavigate } from "react-router-dom";
 import {
     Card,
     CardContent,
@@ -11,32 +10,31 @@ import {
     CardFooter,
     CardHeader,
     CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "../ui/card";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
 import {
     AI_PROMPT_HOTELS,
-    AI_PROMPT_RECOMMENDATIONS,
-    TripMoodOptions,
     SelectTravelerList,
+    TripMoodOptions,
     CityBudgets,
-} from "@/constants/options";
-import { doc, setDoc, collection, query, where, getDocs, updateDoc } from "firebase/firestore";
+} from "../../constants/options.js";
+import { doc, setDoc } from "firebase/firestore";
 import { db } from "@/services/fireBaseConfig";
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import Slider from "react-slider";
 import { FaRupeeSign } from "react-icons/fa";
-import { GetPlaceDetails } from "@/services/GlobalAPI";
+import GooglePlacesAutocomplete from "react-google-places-autocomplete";
 
-export const HomePage = () => {
-    const [place, setPlace] = useState(null);
+export const TripDetailsForm = () => {
+    const { destination } = useParams(); // Get destination from URL
     const [startCity, setStartCity] = useState(null);
     const [startDate, setStartDate] = useState(new Date());
     const [formData, setFormData] = useState({
+        location: destination ? { label: destination, value: destination } : null, // Handle undefined destination
         noOfDays: 0,
-        location: null,
         budget: 0,
         people: "",
         startCity: null,
@@ -44,26 +42,27 @@ export const HomePage = () => {
         mood: "",
         specificPlace: "",
     });
-    const [openDialog, setOpenDialog] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [approxBudget, setApproxBudget] = useState(null);
     const [budget, setBudget] = useState(0);
     const [specificPlace, setSpecificPlace] = useState("");
     const [selectedMood, setSelectedMood] = useState("");
-    const [recommendedDestinations, setRecommendedDestinations] = useState([]);
-    const [photoUrls, setPhotoUrls] = useState({});
+    const [approxBudget, setApproxBudget] = useState(null);
 
     const navigate = useNavigate();
 
-    const PHOTO_REF_URL =
-        "https://places.googleapis.com/v1/{NAME}/media?maxHeightPx=1000&maxWidthPx=1000&key=" +
-        import.meta.env.VITE_GOOGLE_PLACE_APIKEY;
+    // Redirect if destination is not provided
+    useEffect(() => {
+        if (!destination) {
+            toast("No destination provided. Redirecting to homepage...");
+            navigate("/");
+        }
+    }, [destination, navigate]);
 
-    const handleInputChanges = useCallback((name, value) => {
+    const handleInputChanges = (name, value) => {
         const processedValue =
             name === "budget"
                 ? parseInt(value, 10) || 0
-                : name === "location" || name === "startCity"
+                : name === "startCity"
                 ? value
                 : value || "";
 
@@ -72,7 +71,7 @@ export const HomePage = () => {
             [name]: processedValue,
         }));
 
-        if (name === "location" || name === "startCity") {
+        if (name === "startCity") {
             updateApproxBudget(processedValue);
         }
         if (name === "specificPlace") {
@@ -81,7 +80,7 @@ export const HomePage = () => {
         if (name === "mood") {
             setSelectedMood(value);
         }
-    }, []);
+    };
 
     const updateApproxBudget = (value) => {
         const city = value?.label || value;
@@ -96,77 +95,11 @@ export const HomePage = () => {
         }
     };
 
-    useEffect(() => {
-        const fetchUserTripsAndRecommendations = async () => {
-            const user = JSON.parse(localStorage.getItem("user"));
-            if (!user) {
-                navigate("/create-trip");
-                return;
-            }
-
-            try {
-                const q = query(collection(db, "AItrip"), where("userEmail", "==", user.email));
-                const querySnapshot = await getDocs(q);
-                const trips = [];
-                querySnapshot.forEach((doc) => {
-                    trips.push({ id: doc.id, ...doc.data() });
-                });
-
-                if (trips.length > 0) {
-                    let recommendations = trips[0].recommendedDestinations || [];
-                    if (!recommendations.length) {
-                        const pastTrips = trips.map((trip) => ({
-                            location: trip.userSelection?.location?.label,
-                            budget: trip.userSelection?.budget,
-                            travelers: trip.userSelection?.people,
-                            days: trip.userSelection?.noOfDays,
-                        }));
-                        const prompt = AI_PROMPT_RECOMMENDATIONS
-                            .replace("{pastTrips}", JSON.stringify(pastTrips))
-                            .replace("{pastLocations}", pastTrips.map((t) => t.location).join(", "))
-                            .replace("{pastBudgets}", pastTrips.map((t) => t.budget).join(", "))
-                            .replace("{pastTravelers}", pastTrips.map((t) => t.travelers).join(", "))
-                            .replace("{pastDays}", pastTrips.map((t) => t.days).join(", "));
-
-                        const result = await chatSession.sendMessage(prompt);
-                        recommendations = JSON.parse(result.response.text()).RecommendedDestinations;
-                        const tripRef = doc(db, "AItrip", trips[0].id);
-                        await updateDoc(tripRef, { recommendedDestinations: recommendations });
-                    }
-                    console.log("Recommended Destinations:", recommendations); // Debug log
-                    setRecommendedDestinations(recommendations);
-
-                    recommendations.forEach((dest) => {
-                        if (dest.DestinationName) {
-                            fetchDestinationPhotos(dest.DestinationName);
-                        }
-                    });
-                }
-            } catch (error) {
-                console.error("Error fetching trips or generating recommendations:", error);
-            }
-        };
-
-        fetchUserTripsAndRecommendations();
-    }, [navigate]);
-
-    const fetchDestinationPhotos = async (destination) => {
-        const data = { textQuery: destination };
-        try {
-            const result = await GetPlaceDetails(data);
-            const photoUrl = PHOTO_REF_URL.replace("{NAME}", result.data.places[0].photos[4].name);
-            setPhotoUrls((prev) => ({ ...prev, [destination]: photoUrl }));
-        } catch (error) {
-            console.error(`Error fetching photos for ${destination}:`, error);
-            setPhotoUrls((prev) => ({ ...prev, [destination]: "/trip.jpg" }));
-        }
-    };
-
     const onGenerateTrip = async () => {
         const user = JSON.parse(localStorage.getItem("user"));
 
         if (!user) {
-            setOpenDialog(true);
+            toast("Please log in to generate a trip!");
             return;
         }
 
@@ -174,11 +107,11 @@ export const HomePage = () => {
             !formData.noOfDays ||
             formData.noOfDays > 15 ||
             formData.noOfDays < 1 ||
-            !formData.location ||
             !formData.budget ||
             !formData.people ||
             !formData.startCity ||
-            !formData.startDate
+            !formData.startDate ||
+            !formData.location // Ensure location is present
         ) {
             toast("Please fill all required details!");
             return;
@@ -189,46 +122,35 @@ export const HomePage = () => {
 
         const FINAL_PROMPT = AI_PROMPT_HOTELS
             .replace("{people}", formData.people)
-            .replace("{location}", formData.location.label)
+            .replace("{location}", formData.location.label) // This should now be safe
             .replace("{budget}", formData.budget)
             .replace("{mood}", selectedMood || "relaxed");
 
         try {
             const result = await chatSession.sendMessage(FINAL_PROMPT);
             const responseText = result?.response?.text();
-            console.log("Raw AI Response for Hotels:", responseText);
+            console.log("-- Generated Itinerary:", responseText);
 
             const responseJSON = JSON.parse(responseText);
-            setLoading(false);
-            await saveAiTrip(responseJSON);
-        } catch (error) {
-            console.error("Error generating trip:", error);
-            setLoading(false);
-            toast.error("Failed to generate trip. Please try again.");
-        }
-    };
 
-    const saveAiTrip = async (TripData) => {
-        setLoading(true);
-        const user = JSON.parse(localStorage.getItem("user"));
-        const docId = Date.now().toString();
-        try {
+            const docId = Date.now().toString();
             await setDoc(doc(db, "AItrip", docId), {
                 userSelection: {
                     ...formData,
                     specificPlace: specificPlace || "",
                     mood: selectedMood || "",
                 },
-                tripData: { hotels: TripData.hotels || [] },
+                tripData: { hotels: responseJSON.hotels || [] },
                 userEmail: user?.email,
                 id: docId,
             });
+
             setLoading(false);
-            navigate("/view-trip/" + docId);
+            navigate(`/view-trip/${docId}`);
         } catch (error) {
-            console.error("Error saving trip to Firestore:", error);
             setLoading(false);
-            toast.error("Failed to save trip. Please try again.");
+            toast("Failed to generate trip. Please try again!");
+            console.error("Error generating trip:", error);
         }
     };
 
@@ -238,15 +160,19 @@ export const HomePage = () => {
         }
     };
 
+    if (!destination) {
+        return null; // Render nothing while redirecting
+    }
+
     return (
         <div className="w-full overflow-hidden px-3 md:px-16 lg:px-24 xl:px-48 font-serif bg-gray-900 text-white min-h-screen">
             <Card className="mt-12 shadow-2xl bg-gray-800 border-none rounded-2xl p-8">
                 <CardHeader>
                     <CardTitle className="text-4xl font-bold text-center text-white tracking-wide">
-                        Please Share Your Travel Preferences with Us 🏕🌴
+                        Your Trip to {destination} 🏕🌴
                     </CardTitle>
                     <CardDescription className="pt-6 pb-4 text-center md:text-left font-light text-lg tracking-normal text-gray-300">
-                        Simply provide some basic information, and our trip planner will create a personalized itinerary tailored to your preferences.
+                        Provide your travel preferences below to create a personalized itinerary.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -272,30 +198,10 @@ export const HomePage = () => {
                                     />
                                 </div>
                             </div>
-                            <div className="space-y-4">
-                                <Label htmlFor="name" className="text-xl font-medium text-green-400">
-                                    What is your preferred destination?
-                                </Label>
-                                <div className="dark:text-slate-800 border-2 border-green-500 bg-gray-700 rounded-lg shadow-md">
-                                    <GooglePlacesAutocomplete
-                                        apiKey={import.meta.env.VITE_GOOGLE_PLACE_APIKEY}
-                                        selectProps={{
-                                            place,
-                                            onChange: (val) => {
-                                                setPlace(val);
-                                                handleInputChanges("location", val);
-                                            },
-                                            placeholder: "Search for your destination...",
-                                            isClearable: true,
-                                        }}
-                                        className="text-black"
-                                    />
-                                </div>
-                            </div>
                             {approxBudget && (
                                 <div className="space-y-4">
                                     <Label htmlFor="approxBudget" className="text-xl font-medium text-green-400">
-                                        Approximate Budget
+                                        Approximate Budget (Based on Start City)
                                     </Label>
                                     <div className="p-4 bg-gray-700 rounded-lg shadow-md text-white">
                                         <p>Low-cost: {approxBudget.low} INR</p>
@@ -443,63 +349,8 @@ export const HomePage = () => {
                     </Button>
                 </CardFooter>
             </Card>
-
-            {/* Recommended Destinations Section */}
-            <Card className="mt-12 border-y-2 p-5 bg-gray-800 rounded-2xl shadow-lg">
-                <h2 className="font-bold text-lg sm:text-lg md:text-2xl mt-7 md:mt-10 lg:mt-16 mb-2 text-blue-800 dark:text-customGreen text-center">
-                    🌟 Recommended Destinations 🌟
-                </h2>
-                {recommendedDestinations.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 text-justify gap-3 md:gap-6 xl:gap-6 mt-4">
-                        {recommendedDestinations.map((dest, index) => {
-                            const destinationName = dest.DestinationName || "Unknown Destination"; // Extract DestinationName
-                            return (
-                                <div
-                                    key={index}
-                                    className="text-sm lg:text-base hover:scale-105 transition-all mb-2 border-[1px] md:border-2 dark:border-customGreen border-blue-700 rounded-lg px-2 bg-gray-700 cursor-pointer"
-                                    onClick={() => {
-                                        if (!dest.DestinationName) {
-                                            toast("Invalid destination name. Please try another.");
-                                            console.error("Invalid DestinationName:", dest);
-                                            return;
-                                        }
-                                        console.log("Navigating to:", `/trip-details/${destinationName}`);
-                                        navigate(`/trip-details/${destinationName}`); // Pass extracted DestinationName
-                                    }}
-                                >
-                                    <img
-                                        src={photoUrls[destinationName] || "/trip.jpg"}
-                                        alt={destinationName}
-                                        className="h-48 w-full object-cover rounded-t-lg"
-                                        onError={(e) => (e.target.src = "/trip.jpg")}
-                                    />
-                                    <h3 className="font-semibold text-sm md:text-lg mt-2 text-white">
-                                        {destinationName}
-                                    </h3>
-                                    <p className="text-white mt-1">
-                                        <strong>Why:</strong> {dest.ReasonForRecommendation || "N/A"}
-                                    </p>
-                                    <p className="text-white mt-1">
-                                        <strong>Days:</strong> {dest.SuggestedNoOfDays || "N/A"}
-                                    </p>
-                                    <p className="text-white mt-1">
-                                        <strong>Budget:</strong> ₹{dest.SuggestedBudget || "N/A"} INR
-                                    </p>
-                                    <p className="text-white mt-1 mb-2">
-                                        <strong>For:</strong> {dest.SuggestedTravelerType || "N/A"}
-                                    </p>
-                                </div>
-                            );
-                        })}
-                    </div>
-                ) : (
-                    <p className="text-center text-gray-300 mt-4">
-                        No recommended destinations available yet. Take a trip to get started!
-                    </p>
-                )}
-            </Card>
         </div>
     );
 };
 
-export default HomePage;
+export default TripDetailsForm;

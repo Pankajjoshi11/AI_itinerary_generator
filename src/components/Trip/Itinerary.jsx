@@ -39,12 +39,18 @@ export const Itinerary = ({ trip }) => {
       ? trip.userSelection.startDate 
       : new Date().toISOString().split("T")[0]);
 
+  // Calculate Approximate Total Budget with fallback and string formatting
+  const approximateTotalBudget = trip?.tripData?.approximateTotalBudget || 0;
+  const formattedBudget = typeof approximateTotalBudget === "string" 
+    ? approximateTotalBudget 
+    : `${approximateTotalBudget} INR`;
+
   return (
     <div className="w-full max-w-4xl mx-auto p-4 bg-gray-900 text-white">
       <Card className="mb-8 shadow-lg bg-gray-800 border-none">
         <CardHeader>
-          <h1 className="text-3xl font-bold text-center text-white">
-            🏖️ Trip Itinerary 🏖️
+          <h1 className="text-3xl font-bold text-center text-white flex items-center justify-center">
+            <span className="mr-2 text-yellow-500">🏖️</span> Trip Itinerary <span className="ml-2 text-yellow-500">🏖️</span>
           </h1>
         </CardHeader>
         <CardContent>
@@ -57,7 +63,7 @@ export const Itinerary = ({ trip }) => {
             return (
               <section key={dayIndex} className="mb-12 border-b border-gray-700 pb-6 last:border-b-0">
                 <h2 className="text-2xl font-semibold mb-4 flex items-center text-white">
-                  <span className="mr-2">🗓️</span>
+                  <span className="mr-2 text-green-400">🗓️</span>
                   {day.Day || `Day ${dayIndex + 1}`} ({formattedDate})
                 </h2>
                 {/* Big, visible line before activities */}
@@ -74,7 +80,7 @@ export const Itinerary = ({ trip }) => {
                     >
                       <Card className="overflow-hidden hover:shadow-xl transition-shadow bg-gray-800 border-gray-700">
                         <CardContent className="p-6">
-                          <h3 className="text-xl font-semibold mb-2 flex items-center text-white">
+                          <h3 className="text-xl font-semibold mb-2 flex items-center text-pink-400">
                             <span className="mr-2 text-green-400">📍</span>
                             {activity.PlaceName || "Unnamed Place"}
                           </h3>
@@ -106,6 +112,12 @@ export const Itinerary = ({ trip }) => {
               </section>
             );
           })}
+          {/* Display Approximate Total Budget at the bottom of the itinerary */}
+          <div className="mt-8 text-center">
+            <p className="text-xl font-semibold text-blue-800 dark:text-customGreen">
+              Approximate Total Budget (excluding flights): ₹{formattedBudget}
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>

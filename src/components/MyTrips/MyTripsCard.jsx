@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
+import { GetPlaceDetails } from "@/services/GlobalAPI";
+import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Card } from "../ui/card";
 
@@ -67,7 +68,7 @@ function MyTripsCard({ trip, onClick }) {
                 <div className="font-serif xs:text-sm sm:text-base md:text-lg lg:text-lg xl:text-xl px-1">
                     <img
                         className="h-56 w-full rounded-2xl p-2 object-cover"
-                        src={photoUrl.length > 0 ? photoUrl[0] : "/trip.jpg"} // Use the first photo or fallback
+                        src={photoUrl.length > 0 ? photoUrl[0] : "/trip.jpg"} // Use the first photo (index 0, matching the 10th photo from the API) or fallback
                         alt={`${trip?.userSelection?.location?.label || "Trip location"} photo`}
                         onError={handleImageError} // Fallback if image fails to load
                         loading="lazy" // Lazy load images for performance

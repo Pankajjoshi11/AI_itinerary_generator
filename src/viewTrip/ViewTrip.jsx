@@ -18,6 +18,20 @@ import { chatSession } from "@/services/AImodel";
 import emailjs from "emailjs-com";
 import { Shopping } from "../components/Shopping/Shopping"; // Import Shopping component
 
+// Array of 10 local image paths (stored in public/images/)
+const localHotelImages = [
+  "/images/hotel1.jpg",
+  "/images/hotel2.jpg",
+  "/images/hotel3.jpg",
+  "/images/hotel4.jpg",
+  "/images/hotel5.jpg",
+  "/images/hotel6.jpg",
+  "/images/hotel7.jpg",
+  "/images/hotel8.jpg",
+  "/images/hotel9.jpg",
+  "/images/hotel10.jpg",
+];
+
 export const ViewTrip = () => {
     const { tripId } = useParams();
     const [trip, setTrip] = useState(null);
@@ -436,9 +450,13 @@ ${day.activities.map(activity => `
                                     onClick={() => handleHotelSelect(hotel)}
                                 >
                                     <img
-                                        src={hotel.HotelImageURL}
+                                        src={localHotelImages[index % localHotelImages.length]}
                                         alt={hotel.HotelName}
                                         className="w-full h-40 object-cover rounded"
+                                        onError={(e) => {
+                                            console.log(`Image failed to load: ${localHotelImages[index % localHotelImages.length]}`);
+                                            e.target.src = "/images/default.jpg";
+                                        }}
                                     />
                                     <h3 className="text-lg font-semibold mt-2">{hotel.HotelName}</h3>
                                     <p>{hotel.HotelAddress}</p>
@@ -451,7 +469,29 @@ ${day.activities.map(activity => `
                     </div>
                 ) : selectedHotel && !itineraryGenerated ? (
                     <>
-                        <Hotels trip={{ ...stableTrip, tripData: { hotels: [selectedHotel] } }} />
+                        <div className="mt-6 p-6 bg-gray-800 rounded-lg shadow-xl">
+                            <h2 className="text-2xl font-bold mb-4 text-white">Your Selected Hotel</h2>
+                            <div className="flex flex-col md:flex-row gap-6">
+                                <div className="md:w-1/3">
+                                    <img
+                                        src={localHotelImages[0]} // Use the first image from the array
+                                        alt={selectedHotel.HotelName}
+                                        className="w-full h-48 object-cover rounded-lg"
+                                        onError={(e) => {
+                                            console.log(`Image failed to load: ${localHotelImages[0]}`);
+                                            e.target.src = "/images/default.jpg";
+                                        }}
+                                    />
+                                </div>
+                                <div className="md:w-2/3 space-y-3">
+                                    <h3 className="text-xl font-semibold text-white">{selectedHotel.HotelName}</h3>
+                                    <p className="text-gray-300">{selectedHotel.HotelAddress}</p>
+                                    <p className="text-green-400 font-semibold">{selectedHotel.Price}</p>
+                                    <p className="text-yellow-400">Rating: {selectedHotel.Rating} ⭐</p>
+                                    <p className="text-gray-400">{selectedHotel.Description}</p>
+                                </div>
+                            </div>
+                        </div>
                         <button
                             onClick={generateItinerary}
                             className="bg-blue-700 text-white px-4 py-2 rounded mt-4 hover:bg-blue-800 transition-all"
@@ -462,7 +502,29 @@ ${day.activities.map(activity => `
                     </>
                 ) : itineraryGenerated ? (
                     <>
-                        <Hotels trip={{ ...stableTrip, tripData: { hotels: [selectedHotel] } }} />
+                        <div className="mt-6 p-6 bg-gray-800 rounded-lg shadow-xl">
+                            <h2 className="text-2xl font-bold mb-4 text-white">Your Selected Hotel</h2>
+                            <div className="flex flex-col md:flex-row gap-6">
+                                <div className="md:w-1/3">
+                                    <img
+                                        src={localHotelImages[0]} // Use the first image from the array
+                                        alt={selectedHotel.HotelName}
+                                        className="w-full h-48 object-cover rounded-lg"
+                                        onError={(e) => {
+                                            console.log(`Image failed to load: ${localHotelImages[0]}`);
+                                            e.target.src = "/images/default.jpg";
+                                        }}
+                                    />
+                                </div>
+                                <div className="md:w-2/3 space-y-3">
+                                    <h3 className="text-xl font-semibold text-white">{selectedHotel.HotelName}</h3>
+                                    <p className="text-gray-300">{selectedHotel.HotelAddress}</p>
+                                    <p className="text-green-400 font-semibold">{selectedHotel.Price}</p>
+                                    <p className="text-yellow-400">Rating: {selectedHotel.Rating} ⭐</p>
+                                    <p className="text-gray-400">{selectedHotel.Description}</p>
+                                </div>
+                            </div>
+                        </div>
                         <Itinerary trip={stableTrip} />
                         <div className="mt-6">
                             <Map trip={stableTrip} />
@@ -477,40 +539,42 @@ ${day.activities.map(activity => `
                     <p className="text-center text-white">Loading hotels...</p>
                 )}
 
-                <div className="flex gap-4 mt-6">
-                    <button
-                        onClick={handleShowEvents}
-                        className="bg-customGreen text-white px-4 py-2 rounded hover:bg-green-600 transition-all"
-                        disabled={!itineraryGenerated}
-                    >
-                        Show Local Events
-                    </button>
-                    <button
-                        onClick={handleShowFlights}
-                        className="bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-800 transition-all"
-                        disabled={!itineraryGenerated}
-                    >
-                        Show Flights
-                    </button>
-                    <button
-                        onClick={handleShowPacking}
-                        className="bg-purple-700 text-white px-4 py-2 rounded hover:bg-purple-800 transition-all"
-                        disabled={!itineraryGenerated}
-                    >
-                        Packing Details
-                    </button>
-                    <button
-                        onClick={handleShowShopping}
-                        className="bg-purple-700 text-white px-4 py-2 rounded hover:bg-purple-800 transition-all"
-                        disabled={!itineraryGenerated}
-                    >
-                        Shopping Sites
-                    </button>
-                    {itineraryGenerated && (
-                        <div>
-                            <PdfMaker trip={trip} selectedHotel={selectedHotel} />
-                        </div>
-                    )}
+                <div className="mt-6">
+                    <div className="flex gap-4">
+                        <button
+                            onClick={handleShowEvents}
+                            className="bg-customGreen text-white px-4 py-2 rounded mt-4 hover:bg-green-600 transition-all"
+                            disabled={!itineraryGenerated}
+                        >
+                            Show Local Events
+                        </button>
+                        <button
+                            onClick={handleShowFlights}
+                            className="bg-blue-700 text-white px-4 py-2 rounded mt-4 hover:bg-blue-800 transition-all"
+                            disabled={!itineraryGenerated}
+                        >
+                            Show Flights
+                        </button>
+                        <button
+                            onClick={handleShowPacking}
+                            className="bg-purple-700 text-white px-4 py-2 rounded mt-4 hover:bg-purple-800 transition-all"
+                            disabled={!itineraryGenerated}
+                        >
+                            Packing Details
+                        </button>
+                        <button
+                            onClick={handleShowShopping}
+                            className="bg-purple-700 text-white px-4 py-2 rounded mt-4 hover:bg-purple-800 transition-all"
+                            disabled={!itineraryGenerated}
+                        >
+                            Shopping Sites
+                        </button>
+                        {itineraryGenerated && (
+                            <div>
+                                <PdfMaker trip={trip} selectedHotel={selectedHotel} />
+                            </div>
+                        )}
+                    </div>
                 </div>
             </Card>
 

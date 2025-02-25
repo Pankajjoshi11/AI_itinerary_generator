@@ -1,6 +1,18 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 
+const localHotelImages = [
+  "/images/hotel1.jpg",
+  "/images/hotel2.jpg",
+  "/images/hotel3.jpg",
+  "/images/hotel4.jpg",
+  "/images/hotel5.jpg",
+  "/images/hotel6.jpg",
+  "/images/hotel7.jpg",
+  "/images/hotel8.jpg",
+  "/images/hotel9.jpg",
+  "/images/hotel10.jpg",
+];
 export const Hotels = ({ trip, onSelectHotel }) => {
   const handleHotelSelect = (hotel) => {
     if (onSelectHotel) {
@@ -29,12 +41,15 @@ export const Hotels = ({ trip, onSelectHotel }) => {
               onClick={() => handleHotelSelect(hotel)}
             >
               <div className="relative h-52 w-full rounded-t-lg overflow-hidden">
-                <img
-                  src={hotel.HotelImageURL || "/default.jpg"}
-                  alt={hotel.HotelName}
-                  className="w-full h-full object-cover transition-opacity duration-300 hover:opacity-90"
-                  onError={(e) => (e.target.src = "/default.jpg")}
-                />
+                  <img
+                    src={localHotelImages[index % localHotelImages.length]} // Use local image from array
+                    alt={hotel.HotelName}
+                    className="w-full h-full object-cover transition-opacity duration-300 hover:opacity-90"
+                    onError={(e) => {
+                      console.log(`Image failed to load: ${localHotelImages[index % localHotelImages.length]}`);
+                      e.target.src = "/images/default.jpg"; // Fallback to default image
+                    }}
+                  />
               </div>
               <CardContent className="p-6">
                 <h3 className="text-2xl font-bold text-white mb-3 truncate">

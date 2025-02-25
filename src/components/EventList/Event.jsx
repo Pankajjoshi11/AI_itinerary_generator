@@ -92,7 +92,7 @@ const EventList = ({ location }) => {
           start: "0" 
         },
         headers: {
-          "x-rapidapi-key": "3ef090441amshb192b75ccc7677fp174c9fjsn273c8739d468",
+          "x-rapidapi-key": "fa2c3b0fefmsha51148dc95a2ddbp134de7jsn7d1ec789ac6b",
           "x-rapidapi-host": "real-time-events-search.p.rapidapi.com",
         },
       });
@@ -179,12 +179,7 @@ const EventList = ({ location }) => {
                         Get Tickets ({event.ticket_links[0].source})
                       </a>
                     )}
-                    <button
-                      onClick={() => handleAddToItinerary(event)}
-                      style={styles.addButton}
-                    >
-                      Add to Itinerary
-                    </button>
+            
                   </div>
                 </div>
               </div>

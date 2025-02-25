@@ -10,7 +10,7 @@ const Chatbot = ({
   const [userInput, setUserInput] = useState("");
   const [conversation, setConversation] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const chatContainerRef = useRef(null);
 
   const initialSuggestions = [
@@ -76,14 +76,17 @@ const Chatbot = ({
     
     Key instructions:
     - Today's date is ${getCurrentDate()}
-    - Address the user casually and warmly
-    - Provide specific, actionable advice
+    - Address the user casually and warmly only once at beginning
+    - Provide specific, actionable advice 
     - Include local insights and practical tips
     - For weather-related questions, include current temperature and conditions
     - Reference previous conversation when relevant
-    - End responses with 1-2 natural follow-up questions
+    - End responses with 1 natural follow-up question
     - Keep responses concise but informative
     - Add emojis occasionally to make responses engaging
+    - Keep the conversation short and precise 
+    - Do not use bold text and give in proper formatting
+    - Maximum use 3 lines as a response.
     
     Previous conversation: ${conversation.map(c => 
       `User: ${c.user}\nAssistant: ${c.bot}`).join('\n')}

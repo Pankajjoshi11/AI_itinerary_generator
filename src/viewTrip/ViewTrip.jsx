@@ -1,6 +1,6 @@
 import { db } from "@/services/fireBaseConfig";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { useEffect, useState, useMemo } from "react"; // Added useMemo
+import { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { InfoSection } from "../components/Trip/InfoSection";
@@ -16,32 +16,32 @@ import Map from "@/components/Map/Map";
 import { AI_PROMPT_ITINERARY, AI_PROMPT_FLIGHTS, AI_PROMPT_PACKING } from "../constants/options";
 import { chatSession } from "@/services/AImodel";
 import emailjs from "emailjs-com";
-import { Shopping } from "../components/Shopping/Shopping"; // Import Shopping component
+import { Shopping } from "../components/Shopping/Shopping";
 
 // Array of 10 local image paths (stored in public/images/)
 const localHotelImages = [
-  "/images/hotel1.jpg",
-  "/images/hotel2.jpg",
-  "/images/hotel3.jpg",
-  "/images/hotel4.jpg",
-  "/images/hotel5.jpg",
-  "/images/hotel6.jpg",
-  "/images/hotel7.jpg",
-  "/images/hotel8.jpg",
-  "/images/hotel9.jpg",
-  "/images/hotel10.jpg",
+    "/images/hotel1.jpg",
+    "/images/hotel2.jpg",
+    "/images/hotel3.jpg",
+    "/images/hotel4.jpg",
+    "/images/hotel5.jpg",
+    "/images/hotel6.jpg",
+    "/images/hotel7.jpg",
+    "/images/hotel8.jpg",
+    "/images/hotel9.jpg",
+    "/images/hotel10.jpg",
 ];
 
 export const ViewTrip = () => {
     const { tripId } = useParams();
     const [trip, setTrip] = useState(null);
-    const [selectedHotel, setSelectedHotel] = useState(null); // State for selected hotel, initialized to null
+    const [selectedHotel, setSelectedHotel] = useState(null);
     const [itineraryGenerated, setItineraryGenerated] = useState(false);
     const [showEvents, setShowEvents] = useState(false);
     const [showFlights, setShowFlights] = useState(false);
     const [showPacking, setShowPacking] = useState(false);
-    const [showShopping, setShowShopping] = useState(false); // New state for shopping
-    const [loadingItinerary, setLoadingItinerary] = useState(false); // New loading state
+    const [showShopping, setShowShopping] = useState(false);
+    const [loadingItinerary, setLoadingItinerary] = useState(false);
 
     useEffect(() => {
         if (tripId) {
@@ -57,7 +57,6 @@ export const ViewTrip = () => {
             const tripData = docSnap.data();
             console.log("Fetched Trip Data from Firestore:", tripData);
             setTrip({ id: docSnap.id, ...tripData });
-            // Set selectedHotel if it exists in the document or from tripData
             if (tripData.selectedHotel) {
                 setSelectedHotel(tripData.selectedHotel);
             }
@@ -68,8 +67,7 @@ export const ViewTrip = () => {
     };
 
     const handleHotelSelect = (hotel) => {
-        setSelectedHotel(hotel); // Store the selected hotel in state
-        // Save the selected hotel to Firestore immediately
+        setSelectedHotel(hotel);
         saveSelectedHotel(hotel);
     };
 
@@ -77,14 +75,12 @@ export const ViewTrip = () => {
         if (tripId) {
             await setDoc(
                 doc(db, "AItrip", tripId),
-                {
-                    selectedHotel: hotel, // Store the selected hotel in the trip document
-                },
+                { selectedHotel: hotel },
                 { merge: true }
             );
             setTrip((prev) => ({
                 ...prev,
-                selectedHotel: hotel, // Update local state
+                selectedHotel: hotel,
             }));
         }
     };
@@ -95,7 +91,7 @@ export const ViewTrip = () => {
             return;
         }
 
-        setLoadingItinerary(true); // Start loading
+        setLoadingItinerary(true);
         const { userSelection, tripData } = trip;
         let formattedDate;
         if (userSelection?.startDate) {
@@ -114,7 +110,6 @@ export const ViewTrip = () => {
             formattedDate = "unspecified date";
         }
 
-        // Use selectedHotel for HotelName and GeoCoordinates in the prompt
         const hotelName = selectedHotel?.HotelName || "Unknown Hotel";
         const startingGeoCoordinates = selectedHotel?.GeoCoordinates
             ? `${selectedHotel.GeoCoordinates.latitude},${selectedHotel.GeoCoordinates.longitude}`
@@ -125,8 +120,7 @@ export const ViewTrip = () => {
             .replace("{people}", userSelection?.people || "1 People")
             .replace("{location}", userSelection?.location?.label || "unknown location")
             .replace("{budget}", userSelection?.budget || "Moderate")
-            .replace("{HotelName}", hotelName) // Use selected hotel name
-            .replace("{startingGeoCoordinates}", startingGeoCoordinates) // Use selected hotel's coordinates
+            .replace("{startingGeoCoordinates}", startingGeoCoordinates)
             .replace("{startDate}", formattedDate)
             .replace("{specificPlace}", userSelection?.specificPlace || "none specified");
 
@@ -140,15 +134,55 @@ export const ViewTrip = () => {
             console.log("Parsed AI Response:", responseJSON);
         } catch (e) {
             console.error("Parsing error:", e);
-            responseJSON = { itinerary: [], ApproximateTotalBudget: 0 };
+            responseJSON = { 
+                tripItinerary: { 
+                    itinerary: [], 
+                    ApproximateTotalBudget: { HotelCost: 0, ActivityAndTransportCost: 0, Breakdown: { HotelCost: 0, ActivityAndTransportCost: 0 }, Total: 0 } 
+                } 
+            };
         }
 
-        // Updated parsing logic with OR condition for trip.itinerary or root-level itinerary
-        const itineraryData = (responseJSON.trip?.itinerary || responseJSON.itinerary) || [];
-        const budget = (responseJSON.trip?.ApproximateTotalBudget || responseJSON.ApproximateTotalBudget) || 0;
+        const tripItinerary = responseJSON.tripItinerary || {};
+        const itineraryData = tripItinerary.itinerary || [];
+        const budgetData = tripItinerary.ApproximateTotalBudget || { HotelCost: 0, ActivityAndTransportCost: 0, Breakdown: { HotelCost: 0, ActivityAndTransportCost: 0 }, Total: 0 };
+        const aiHotelCost = budgetData.HotelCost || 0;
+        const aiActivityTransportCost = budgetData.ActivityAndTransportCost || 0;
+        const aiTotalBudget = budgetData.Total || (aiHotelCost + aiActivityTransportCost);
+
+        // Calculate hotel cost using selectedHotel.Price (allow exceeding budget)
+        const hotelPricePerNight = parseInt(selectedHotel.Price.replace(/[^0-9]/g, "")) || 0;
+        const calculatedHotelCost = userSelection.noOfDays * hotelPricePerNight;
+
+        // Calculate remaining budget for activities and transport (can be negative or exceed)
+        const userBudget = userSelection.budget || 0;
+        const remainingBudget = userBudget - calculatedHotelCost;
+
+        // Adjust activity and transport costs based on AI suggestion or remaining budget
+        let activityTransportCost = aiActivityTransportCost;
+        if (remainingBudget < activityTransportCost && remainingBudget > 0) {
+            const scaleFactor = remainingBudget / activityTransportCost;
+            itineraryData.forEach((day) => {
+                day.activities.forEach((activity) => {
+                    if (activity.TicketPricing && activity.TicketPricing !== "Free") {
+                        const price = parseInt(activity.TicketPricing.replace(" INR", ""));
+                        activity.TicketPricing = `${Math.round(price * scaleFactor)} INR`;
+                    }
+                });
+            });
+            activityTransportCost = remainingBudget;
+        } else {
+            activityTransportCost = Math.max(0, aiActivityTransportCost); // Ensure non-negative
+        }
+
+        const adjustedTotalBudget = calculatedHotelCost + activityTransportCost;
+        const costBreakdown = {
+            HotelCost: calculatedHotelCost,
+            ActivityAndTransportCost: activityTransportCost,
+        };
 
         console.log("Itinerary Data:", itineraryData);
-        console.log("Budget:", budget);
+        console.log("Adjusted Total Budget:", adjustedTotalBudget);
+        console.log("Cost Breakdown:", costBreakdown);
 
         await setDoc(
             doc(db, "AItrip", tripId),
@@ -156,9 +190,10 @@ export const ViewTrip = () => {
                 tripData: {
                     ...tripData,
                     itinerary: itineraryData,
-                    approximateTotalBudget: budget,
+                    approximateTotalBudget: adjustedTotalBudget,
+                    costBreakdown: costBreakdown,
                 },
-                selectedHotel: selectedHotel, // Ensure selectedHotel is saved with the itinerary
+                selectedHotel: selectedHotel,
             },
             { merge: true }
         );
@@ -169,23 +204,26 @@ export const ViewTrip = () => {
                 tripData: {
                     ...prev.tripData,
                     itinerary: itineraryData,
-                    approximateTotalBudget: budget,
+                    approximateTotalBudget: adjustedTotalBudget,
+                    costBreakdown: costBreakdown,
                 },
-                selectedHotel: selectedHotel, // Update local state with selected hotel
+                selectedHotel: selectedHotel,
             };
             console.log("Updated Trip State:", newTrip);
             return newTrip;
         });
         setItineraryGenerated(true);
-        setLoadingItinerary(false); // End loading
+        setLoadingItinerary(false);
 
-        // Prepare itinerary text for email, including startDate from the response
-        const startDate = responseJSON.trip?.startDate || formattedDate; // Use trip.startDate if available, fallback to formattedDate
+        const startDate = tripItinerary.startDate || formattedDate;
         const itineraryText = `
 Trip Itinerary for ${userSelection?.location?.label || "Unknown Location"}
 Start Date: ${startDate}
 Selected Hotel: ${selectedHotel?.HotelName || "Not specified"}
-Approximate Budget (excluding flights): ₹${budget} INR
+Approximate Budget (excluding flights): ₹${adjustedTotalBudget} INR
+Cost Breakdown:
+- Hotel Cost: ₹${costBreakdown.HotelCost} INR
+- Activities & Transport Cost: ₹${costBreakdown.ActivityAndTransportCost} INR
 
 ${itineraryData.map((day, index) => `
 Day ${index + 1} (${day.Day}, ${startDate.split("-")[1]}/${startDate.split("-")[2]}/${startDate.split("-")[0]}):
@@ -199,7 +237,7 @@ ${day.activities.map(activity => `
 `).join("")}
 `).join("")}`;
 
-        sendEmail(itineraryText); // Send itinerary as text in email
+        sendEmail(itineraryText);
     };
 
     const sendEmail = (itineraryText) => {
@@ -209,7 +247,6 @@ ${day.activities.map(activity => `
             return;
         }
 
-        // Ensure all fields in the email data are strings or valid values
         const emailData = {
             email: user.email || "",
             tripId: tripId || "",
@@ -221,10 +258,10 @@ ${day.activities.map(activity => `
         };
 
         emailjs.send(
-            "service_nue47xc", // Service ID
-            "template_rbvlgqc", // Template ID
-            emailData, // Use the structured email data
-            "v0_0UndGhSgkGDJGb" // User ID
+            "service_nue47xc",
+            "template_rbvlgqc",
+            emailData,
+            "v0_0UndGhSgkGDJGb"
         )
         .then(
             (result) => {
@@ -276,7 +313,6 @@ ${day.activities.map(activity => `
             responseJSON = [];
         }
 
-        // Fixed syntax error in the working version (using backticks for template literals)
         const flightsArray = Array.isArray(responseJSON)
             ? responseJSON.map(flight => ({
                 ...flight,
@@ -343,7 +379,6 @@ ${day.activities.map(activity => `
             month >= 9 && month <= 11 ? "autumn" :
             "winter";
 
-        // Revert to simpler parsing logic from the earlier working version
         const itineraryActivities = tripData?.itinerary
             ? tripData.itinerary.map((day, index) => 
                 `Day ${index + 1}: Visit ${day.PlaceName} (${day.PlaceDetails})`
@@ -369,10 +404,9 @@ ${day.activities.map(activity => `
             console.log("Parsed Packing Response:", responseJSON);
         } catch (e) {
             console.error("Parsing error for packing list:", e);
-            responseJSON = {}; // Fallback to empty object instead of empty array to match expected structure
+            responseJSON = {};
         }
 
-        // Normalize responseJSON to ensure it’s an object with day-based keys
         const normalizedPackingList = {};
         if (typeof responseJSON === "object" && responseJSON !== null) {
             Object.keys(responseJSON).forEach(key => {
@@ -474,7 +508,7 @@ ${day.activities.map(activity => `
                             <div className="flex flex-col md:flex-row gap-6">
                                 <div className="md:w-1/3">
                                     <img
-                                        src={localHotelImages[0]} // Use the first image from the array
+                                        src={localHotelImages[0]}
                                         alt={selectedHotel.HotelName}
                                         className="w-full h-48 object-cover rounded-lg"
                                         onError={(e) => {
@@ -507,7 +541,7 @@ ${day.activities.map(activity => `
                             <div className="flex flex-col md:flex-row gap-6">
                                 <div className="md:w-1/3">
                                     <img
-                                        src={localHotelImages[0]} // Use the first image from the array
+                                        src={localHotelImages[0]}
                                         alt={selectedHotel.HotelName}
                                         className="w-full h-48 object-cover rounded-lg"
                                         onError={(e) => {
@@ -533,6 +567,17 @@ ${day.activities.map(activity => `
                             <p className="text-lg font-semibold text-blue-800 dark:text-customGreen">
                                 Approximate Total Budget (excluding flights): ₹{stableTrip?.tripData?.approximateTotalBudget || 0} INR
                             </p>
+                            <div className="mt-2 text-gray-300">
+                                <p>Cost Breakdown:</p>
+                                <ul className="list-disc pl-5">
+                                    <li>
+                                        Hotel Cost ({stableTrip?.userSelection?.noOfDays} days x ₹{parseInt(selectedHotel.Price.replace(/[^0-9]/g, ""))} per night): ₹{stableTrip?.tripData?.costBreakdown?.HotelCost || 0} INR
+                                    </li>
+                                    <li>
+                                        Activities & Transport Cost: ₹{stableTrip?.tripData?.costBreakdown?.ActivityAndTransportCost || 0} INR
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
                     </>
                 ) : (

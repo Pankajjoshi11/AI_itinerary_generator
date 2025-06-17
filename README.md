@@ -1,7 +1,7 @@
 # AI-Powered Trip Recommendation Platform
 
 ## Overview
-SaveTheDate is an AI-driven trip recommendation platform designed to provide personalized travel itineraries. By integrating Google Gemini's Generative AI API and Google Places API, the platform offers intelligent trip planning, location insights, and real-time recommendations to enhance the travel experience.
+Authenticity is an AI-driven trip recommendation platform designed to provide personalized travel itineraries. By integrating Google Gemini's Generative AI API and Google Places API, the platform offers intelligent trip planning, location insights, and real-time recommendations to enhance the travel experience.
 
 ## Features
 - **Personalized Trip Recommendations**: AI-generated travel itineraries based on user preferences.

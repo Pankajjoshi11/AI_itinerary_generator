@@ -1,6 +1,8 @@
 # AI-Powered Trip Recommendation Platform
 
 ## Overview
+**🔗 [Live Website](https://ai-itinerary-generator-six.vercel.app/)**
+
 Authenticity is an AI-driven trip recommendation platform designed to provide personalized travel itineraries. By integrating Google Gemini's Generative AI API and Google Places API, the platform offers intelligent trip planning, location insights, and real-time recommendations to enhance the travel experience.
 
 ## Features
@@ -12,6 +14,7 @@ Authenticity is an AI-driven trip recommendation platform designed to provide pe
 - **Real-Time Updates**: Dynamic trip suggestions based on user interests and location.
 
 ## Tech Stack
+
 ### Frontend
 - **React.js**: Component-based UI development.
 - **Tailwind CSS**: Utility-first CSS framework for styling.
@@ -27,6 +30,7 @@ Authenticity is an AI-driven trip recommendation platform designed to provide pe
 - **Google OAuth**: Secure authentication.
 
 ## Installation & Setup
+
 ### Prerequisites
 Ensure you have the following installed:
 - Node.js (latest LTS version recommended)
@@ -34,6 +38,7 @@ Ensure you have the following installed:
 - Google Cloud API keys for Gemini AI and Places API
 
 ### Steps
+
 1. **Clone the repository**
    ```sh
    git clone https://github.com/Pankajjoshi11/codhers_hacksync25.git

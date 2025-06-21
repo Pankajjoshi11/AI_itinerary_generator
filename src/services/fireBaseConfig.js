@@ -11,7 +11,7 @@ const firebaseConfig = {
 	apiKey: "AIzaSyAqLV69PAB_2UutDPsPt_-90XNH8QOBNW0",
 	authDomain: "ai-travel-planner-75d18.firebaseapp.com",
 	projectId: "ai-travel-planner-75d18",
-	storageBucket: "ai-travel-planner-75d18.firebasestorage.app",
+	storageBucket: "ai-travel-planner-75d18.appspot.com",
 	messagingSenderId: "152882646633",
 	appId: "1:152882646633:web:ec3094f67c6b6110335cf8",
 	measurementId: "G-CGPJYT0PQ8"
